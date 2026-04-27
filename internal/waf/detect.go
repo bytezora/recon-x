@@ -1,5 +1,3 @@
-// Package waf detects Web Application Firewalls from HTTP response headers,
-// cookies, and body content.
 package waf
 
 import (
@@ -7,7 +5,6 @@ import (
 "strings"
 )
 
-// Result holds a WAF detection for a specific host.
 type Result struct {
 Host string
 URL  string
@@ -60,8 +57,6 @@ strings.Contains(body, "Varnish cache server")
 }},
 }
 
-// Detect checks response headers, cookies, and body for known WAF signatures.
-// Returns all matching WAFs (a host may trigger multiple signatures).
 func Detect(host, url string, h http.Header, body string) []Result {
 cookies := strings.Join(h["Set-Cookie"], "; ")
 var results []Result

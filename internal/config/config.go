@@ -7,17 +7,18 @@ import (
 )
 
 type Config struct {
-	Targets    []string `yaml:"targets"`
-	Modules    []string `yaml:"modules"`
-	Threads    int      `yaml:"threads"`
-	OutputDir  string   `yaml:"output_dir"`
-	OutputFormat string `yaml:"output_format"`
-	Retries    int      `yaml:"retries"`
-	Rate       int      `yaml:"rate"`
-	Silent     bool     `yaml:"silent"`
-	Verbose    bool     `yaml:"verbose"`
-	GithubToken string  `yaml:"github_token"`
-	Templates  []string `yaml:"templates"`
+	Targets      []string `yaml:"targets"`
+	Modules      []string `yaml:"modules"`
+	Threads      int      `yaml:"threads"`
+	OutputDir    string   `yaml:"output_dir"`
+	OutputFormat string   `yaml:"output_format"`
+	Retries      int      `yaml:"retries"`
+	Rate         int      `yaml:"rate"`
+	Silent       bool     `yaml:"silent"`
+	Verbose      bool     `yaml:"verbose"`
+	GithubToken  string   `yaml:"github_token"`
+	Templates    []string `yaml:"templates"`
+	Resolver     string   `yaml:"resolver"`
 }
 
 func Load(path string) (*Config, error) {

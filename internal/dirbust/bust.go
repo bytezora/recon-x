@@ -1,4 +1,3 @@
-// Package dirbust brute-forces common paths against discovered HTTP services.
 package dirbust
 
 import (
@@ -17,12 +16,11 @@ var defaultPaths string
 
 const requestTimeout = 8 * time.Second
 
-// Hit represents a discovered path with an interesting HTTP status.
 type Hit struct {
 URL        string
 Path       string
 StatusCode int
-RedirectTo string // populated for 3xx responses
+RedirectTo string
 }
 
 func interesting(code int) bool {
@@ -43,8 +41,6 @@ return http.ErrUseLastResponse
 },
 }
 
-// Bust probes each base URL with every path from the wordlist.
-// pathsFile: custom paths file path; empty string uses the embedded list.
 func Bust(baseURLs []string, pathsFile string, threads int, onFound func(Hit)) []Hit {
 baseURLs = DedupeURLs(baseURLs)
 paths    := loadPaths(pathsFile)
@@ -95,7 +91,6 @@ wg.Wait()
 return results
 }
 
-// DedupeURLs returns a deduplicated slice of base URLs.
 func DedupeURLs(urls []string) []string {
 seen := make(map[string]bool, len(urls))
 out  := make([]string, 0, len(urls))

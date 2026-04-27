@@ -53,8 +53,30 @@ func Run(tmpls []Template, targets []string, threads int, onMatch func(Match)) [
 	return matches
 }
 
+func matchWords(body string, words []string) bool {
+	for _, w := range words {
+		if strings.Contains(body, w) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchStatus(code int, statuses []int) bool {
+	for _, s := range statuses {
+		if code == s {
+			return true
+		}
+	}
+	return false
+}
+
+func probeTemplate(t Template, target string) *Match {
+	client := httpclient.New(10*time.Second, true)
+	return runOne(client, t, target)
+}
+
 func runOne(client *http.Client, t Template, target string) *Match {
-	target = strings.TrimRight(target, "/")
 	rawURL := fmt.Sprintf("%s%s", target, t.Request.Path)
 	method := t.Request.Method
 	if method == "" {

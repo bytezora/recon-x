@@ -1,5 +1,3 @@
-// Package subdomain performs DNS-based subdomain enumeration
-// by brute-forcing a wordlist against the target domain.
 package subdomain
 
 import (
@@ -18,23 +16,19 @@ var defaultWordlist string
 
 const dnsTimeout = 5 * time.Second
 
-// Result holds a discovered subdomain and its resolved IP addresses.
 type Result struct {
 	Subdomain string
 	IPs       []string
-	Source    string // "dns" or "crtsh"
+	Source    string
 }
 
-// Enumerate resolves every wordlist entry against target using concurrent
-// goroutines capped at threads. Pass wordlistFile="" to use the embedded list.
-// onFound is called (thread-safe) for each resolved host.
-func Enumerate(target string, threads int, wordlistFile string, onFound func(Result)) []Result {
+func Enumerate(target string, threads int, wordlistFile string, resolverAddr string, onFound func(Result)) []Result {
 	words := loadWords(wordlistFile)
 	results := make([]Result, 0, 32)
 	mu       := sync.Mutex{}
 	sem      := make(chan struct{}, threads)
 	wg       := sync.WaitGroup{}
-	resolver := newResolver()
+	resolver := newResolver(resolverAddr)
 
 	for _, word := range words {
 		host := fmt.Sprintf("%s.%s", word, target)
@@ -66,14 +60,13 @@ func Enumerate(target string, threads int, wordlistFile string, onFound func(Res
 	return results
 }
 
-// AddPassive merges crt.sh results into a result slice, skipping duplicates.
-func AddPassive(existing []Result, names []string, onFound func(Result)) []Result {
+func AddPassive(existing []Result, names []string, resolverAddr string, onFound func(Result)) []Result {
 	seen := make(map[string]bool, len(existing))
 	for _, r := range existing {
 		seen[r.Subdomain] = true
 	}
 
-	resolver := newResolver()
+	resolver := newResolver(resolverAddr)
 
 	for _, name := range names {
 		if seen[name] {
@@ -110,12 +103,14 @@ func loadWords(path string) []string {
 	return strings.Fields(defaultWordlist)
 }
 
-// newResolver returns a net.Resolver that always dials Google DNS over UDP.
-func newResolver() *net.Resolver {
+func newResolver(addr string) *net.Resolver {
+	if addr == "" {
+		return net.DefaultResolver
+	}
 	return &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "udp", "8.8.8.8:53")
+			return (&net.Dialer{}).DialContext(ctx, "udp", addr)
 		},
 	}
 }

@@ -17,9 +17,10 @@ type RequestDef struct {
 }
 
 type MatcherDef struct {
-	Type   string   `yaml:"type"`
-	Words  []string `yaml:"words"`
-	Status []int    `yaml:"status"`
+	Type      string   `yaml:"type"`
+	Words     []string `yaml:"words"`
+	Status    []int    `yaml:"status"`
+	Condition string   `yaml:"condition"`
 }
 
 type Match struct {

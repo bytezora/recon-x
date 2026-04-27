@@ -400,7 +400,7 @@ footer{
     <h2>CVE Matches</h2>
     {{if .Vulns}}
     <table>
-      <thead><tr><th>#</th><th>Host</th><th>Port</th><th>CVE</th><th>CVSS</th><th>Severity</th><th>Description</th><th>Banner / Header</th></tr></thead>
+      <thead><tr><th>#</th><th>Host</th><th>Port</th><th>CVE</th><th>CVSS</th><th>Severity</th><th>Description</th><th>Banner / Header</th><th>Confidence</th></tr></thead>
       <tbody>
       {{range $i,$v := .Vulns}}
       <tr>
@@ -416,6 +416,7 @@ footer{
         </td>
         <td>{{$v.Description}}</td>
         <td class="mono">{{$v.Banner}}</td>
+        <td>{{$v.Confidence}}</td>
       </tr>
       {{end}}
       </tbody>
@@ -829,7 +830,7 @@ footer{
     <h2>SQLi Detection</h2>
     {{if .SQLi}}
     <table>
-      <thead><tr><th>#</th><th>URL</th><th>Param</th><th>Payload</th><th>Evidence</th></tr></thead>
+      <thead><tr><th>#</th><th>URL</th><th>Param</th><th>Payload</th><th>Evidence</th><th>Confidence</th></tr></thead>
       <tbody>
       {{range $i,$s := .SQLi}}
       {{if $s.Detected}}
@@ -839,6 +840,7 @@ footer{
         <td><span class="tag tag-alert">{{$s.Param}}</span></td>
         <td class="mono">{{$s.Payload}}</td>
         <td class="mono" style="color:var(--alert)">{{$s.Evidence}}</td>
+        <td class="mono">{{$s.Confidence}}</td>
       </tr>
       {{end}}
       {{end}}

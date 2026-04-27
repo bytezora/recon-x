@@ -1,4 +1,3 @@
-// Package banner grabs service banners from open TCP ports.
 package banner
 
 import (
@@ -17,8 +16,6 @@ const (
 	maxLen      = 120
 )
 
-// Grab connects to ip:port and returns the service banner.
-// Returns an empty string if the connection fails or no banner is sent.
 func Grab(ip string, port int) string {
 	addr := net.JoinHostPort(ip, fmt.Sprintf("%d", port))
 	conn, err := net.DialTimeout("tcp", addr, dialTimeout)
@@ -29,8 +26,6 @@ func Grab(ip string, port int) string {
 	return GrabConn(conn, port)
 }
 
-// GrabConn reads a service banner from an already-connected TCP socket.
-// Callers are responsible for closing conn after this returns.
 func GrabConn(conn net.Conn, port int) string {
 	conn.SetDeadline(time.Now().Add(readTimeout)) //nolint:errcheck
 
@@ -55,7 +50,6 @@ func GrabConn(conn net.Conn, port int) string {
 		return grabHTTP(conn)
 	}
 
-	// Generic: read first line (works for SSH, FTP, SMTP, etc.)
 	scanner := bufio.NewScanner(conn)
 	if !scanner.Scan() {
 		return ""
@@ -189,7 +183,7 @@ func grabPostgres(conn net.Conn) string {
 	startup[1] = byte(totalLen >> 16)
 	startup[2] = byte(totalLen >> 8)
 	startup[3] = byte(totalLen)
-	startup[4], startup[5], startup[6], startup[7] = 0, 3, 0, 0 // protocol 3.0
+	startup[4], startup[5], startup[6], startup[7] = 0, 3, 0, 0
 	copy(startup[8:], params)
 
 	if _, err := conn.Write(startup); err != nil {
@@ -244,24 +238,24 @@ func grabPostgres(conn net.Conn) string {
 
 func grabMongoDB(conn net.Conn) string {
 	bsonDoc := []byte{
-		0x22, 0x00, 0x00, 0x00, // doc length = 34
-		0x10, 'i', 's', 'M', 'a', 's', 't', 'e', 'r', 0x00, // int32 key
-		0x01, 0x00, 0x00, 0x00, // value = 1
-		0x02, '$', 'd', 'b', 0x00, // string key "$db"
-		0x06, 0x00, 0x00, 0x00, 'a', 'd', 'm', 'i', 'n', 0x00, // value = "admin"
-		0x00, // doc terminator
+		0x22, 0x00, 0x00, 0x00,
+		0x10, 'i', 's', 'M', 'a', 's', 't', 'e', 'r', 0x00,
+		0x01, 0x00, 0x00, 0x00,
+		0x02, '$', 'd', 'b', 0x00,
+		0x06, 0x00, 0x00, 0x00, 'a', 'd', 'm', 'i', 'n', 0x00,
+		0x00,
 	}
-	msgLen := 16 + 4 + 1 + len(bsonDoc) // header + flagBits + section kind + BSON
+	msgLen := 16 + 4 + 1 + len(bsonDoc)
 	le32 := func(v uint32) []byte {
 		return []byte{byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24)}
 	}
 	msg := make([]byte, 0, msgLen)
 	msg = append(msg, le32(uint32(msgLen))...)
-	msg = append(msg, le32(1)...)    // requestID
-	msg = append(msg, le32(0)...)    // responseTo
-	msg = append(msg, le32(2013)...) // opCode OP_MSG
-	msg = append(msg, le32(0)...)    // flagBits
-	msg = append(msg, 0)             // section kind = body
+	msg = append(msg, le32(1)...)
+	msg = append(msg, le32(0)...)
+	msg = append(msg, le32(2013)...)
+	msg = append(msg, le32(0)...)
+	msg = append(msg, 0)
 	msg = append(msg, bsonDoc...)
 
 	if _, err := conn.Write(msg); err != nil {

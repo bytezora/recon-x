@@ -4,6 +4,7 @@
 ![Version](https://img.shields.io/badge/version-2.0.0-39ff14?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square&color=39ff14)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
+![CI](https://github.com/bytezora/recon-x/actions/workflows/build.yml/badge.svg)
 
 Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, HTTP screenshots, and YAML template scanning. Outputs a self-contained HTML report and optional JSON/SARIF.
 
@@ -73,6 +74,7 @@ recon-x -target example.com -output-dir ./results -verbose
 -silent              suppress non-critical output
 -verbose             enable verbose output
 -version             print version
+-resolver            custom DNS resolver address (e.g. 1.1.1.1:53)
 ```
 
 ---

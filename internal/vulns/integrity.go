@@ -1,5 +1,3 @@
-// Package vulns — integrity.go provides SHA-256 fingerprinting of the embedded
-// CVE database to detect silent tampering with the bundled vulnerability rules.
 package vulns
 
 import (
@@ -10,7 +8,6 @@ import (
 	"strings"
 )
 
-// Regenerate: recon-x -db-hash
 const dbExpectedHash = "99450bba69662261f02a09c00e4d4b01991c6d88c7627417b9ee59f45b8bae67"
 
 func init() {
@@ -31,8 +28,6 @@ func verifyDB() {
 	}
 }
 
-// ComputeDBHash returns the SHA-256 fingerprint of the current CVE database.
-// Called at startup for integrity verification and via -db-hash flag for stamping.
 func ComputeDBHash() string {
 	h := sha256.New()
 	for _, e := range db {

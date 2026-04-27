@@ -46,7 +46,7 @@ func tryAXFR(domain, ns string) Result {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(15 * time.Second)) //nolint:errcheck
 
-	msg := buildQuery(domain, 252) // QTYPE AXFR = 252
+	msg := buildQuery(domain, 252)
 	if err := sendMsg(conn, msg); err != nil {
 		return Result{NS: ns, Err: err.Error()}
 	}
@@ -98,12 +98,12 @@ func recvMsg(conn net.Conn) ([]byte, error) {
 
 func buildQuery(domain string, qtype uint16) []byte {
 	var msg []byte
-	msg = append(msg, 0xAB, 0xCD) // random ID
-	msg = append(msg, 0x00, 0x00) // flags: standard query
-	msg = append(msg, 0x00, 0x01) // QDCOUNT: 1
-	msg = append(msg, 0x00, 0x00) // ANCOUNT: 0
-	msg = append(msg, 0x00, 0x00) // NSCOUNT: 0
-	msg = append(msg, 0x00, 0x00) // ARCOUNT: 0
+	msg = append(msg, 0xAB, 0xCD)
+	msg = append(msg, 0x00, 0x00)
+	msg = append(msg, 0x00, 0x01)
+	msg = append(msg, 0x00, 0x00)
+	msg = append(msg, 0x00, 0x00)
+	msg = append(msg, 0x00, 0x00)
 	msg = append(msg, encodeName(domain)...)
 	msg = append(msg, byte(qtype>>8), byte(qtype))
 	msg = append(msg, 0x00, 0x01) // QCLASS: IN
@@ -120,7 +120,6 @@ func encodeName(name string) []byte {
 	return buf
 }
 
-// parseName reads a DNS name from data at offset, following compression pointers.
 func parseName(data []byte, offset int) (string, int) {
 	var labels []string
 	origOffset := -1
@@ -199,11 +198,11 @@ func parseRData(data []byte, offset, length int, rrtype uint16) string {
 	rdata := data[offset:end]
 
 	switch rrtype {
-	case 1: // A
+	case 1:
 		if len(rdata) == 4 {
 			return fmt.Sprintf("%d.%d.%d.%d", rdata[0], rdata[1], rdata[2], rdata[3])
 		}
-	case 28: // AAAA
+	case 28:
 		if len(rdata) == 16 {
 			parts := make([]string, 8)
 			for i := range parts {
@@ -211,16 +210,16 @@ func parseRData(data []byte, offset, length int, rrtype uint16) string {
 			}
 			return strings.Join(parts, ":")
 		}
-	case 2, 5, 12: // NS, CNAME, PTR
+	case 2, 5, 12:
 		name, _ := parseName(data, offset)
 		return name
-	case 15: // MX
+	case 15:
 		if len(rdata) >= 3 {
 			pref := binary.BigEndian.Uint16(rdata[:2])
 			name, _ := parseName(data, offset+2)
 			return fmt.Sprintf("%d %s", pref, name)
 		}
-	case 16: // TXT
+	case 16:
 		var parts []string
 		i := 0
 		for i < len(rdata) {
@@ -233,11 +232,11 @@ func parseRData(data []byte, offset, length int, rrtype uint16) string {
 			i += l
 		}
 		return strings.Join(parts, "")
-	case 6: // SOA
+	case 6:
 		mname, off := parseName(data, offset)
 		rname, _ := parseName(data, off)
 		return mname + " " + rname
-	case 33: // SRV
+	case 33:
 		if len(rdata) >= 7 {
 			prio := binary.BigEndian.Uint16(rdata[:2])
 			weight := binary.BigEndian.Uint16(rdata[2:4])
@@ -264,7 +263,6 @@ func parseResponse(data []byte) ([]Record, int, error) {
 	anCount := int(binary.BigEndian.Uint16(data[6:8]))
 	offset := 12
 
-	// skip questions
 	for i := 0; i < qdCount && offset < len(data); i++ {
 		_, offset = parseName(data, offset)
 		offset += 4 // QTYPE + QCLASS

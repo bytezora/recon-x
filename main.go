@@ -94,6 +94,7 @@ Rate           int
 Silent         bool
 Verbose        bool
 TemplatePaths  []string
+Resolver       string
 }
 
 func main() {
@@ -274,13 +275,13 @@ prog.Send(ui.StepDoneMsg{Step: 0, Count: len(passiveNames)})
 
 prog.Send(ui.StepStartMsg(1))
 if !stateObj.Done(1) {
-*subs = subdomain.Enumerate(cfg.Target, cfg.Threads, cfg.Wordlist, func(r subdomain.Result) {
+*subs = subdomain.Enumerate(cfg.Target, cfg.Threads, cfg.Wordlist, cfg.Resolver, func(r subdomain.Result) {
 prog.Send(ui.ItemMsg{
 Icon: styleGreen.Render("↳"),
 Text: styleMuted.Render(r.Subdomain) + "  " + styleMuted.Render(strings.Join(r.IPs, ", ")),
 })
 })
-*subs = subdomain.AddPassive(*subs, passiveNames, func(r subdomain.Result) {
+*subs = subdomain.AddPassive(*subs, passiveNames, cfg.Resolver, func(r subdomain.Result) {
 prog.Send(ui.ItemMsg{
 Icon: stylePurple.Render("↳"),
 Text: styleMuted.Render("[crt.sh] " + r.Subdomain),
@@ -835,6 +836,7 @@ silent         := flag.Bool("silent",            false,         "Suppress all no
 verbose        := flag.Bool("verbose",           false,         "Enable verbose output")
 ver            := flag.Bool("version",           false,         "Print version and exit")
 dbHash         := flag.Bool("db-hash",           false,         "Print CVE database fingerprint and exit (for stamping integrity.go)")
+resolver       := flag.String("resolver",        "",            "Custom DNS resolver address (e.g. 1.1.1.1:53)")
 flag.Parse()
 
 if *ver {
@@ -869,6 +871,7 @@ Retries:        *retries,
 Rate:           *rate,
 Silent:         *silent,
 Verbose:        *verbose,
+Resolver:       *resolver,
 }
 
 if *modulesFlag != "" {
@@ -907,6 +910,9 @@ cfg.Verbose = true
 }
 if cfg.Target == "" && len(fileCfg.Targets) > 0 {
 cfg.Target = fileCfg.Targets[0]
+}
+if fileCfg.Resolver != "" && *resolver == "" {
+cfg.Resolver = fileCfg.Resolver
 }
 }
 }

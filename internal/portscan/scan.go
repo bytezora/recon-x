@@ -1,5 +1,3 @@
-// Package portscan performs concurrent TCP port scanning
-// across a list of resolved subdomains, with optional banner grabbing.
 package portscan
 
 import (
@@ -14,7 +12,6 @@ import (
 
 const dialTimeout = 2 * time.Second
 
-// Result represents a single open TCP port on a discovered host.
 type Result struct {
 	Host   string
 	Port   int
@@ -22,8 +19,6 @@ type Result struct {
 	Banner string
 }
 
-// Scan dials every (ip, port) pair derived from subs, capped at threads
-// concurrent goroutines. onFound is called for each open port found.
 func Scan(subs []subdomain.Result, ports []int, threads int, onFound func(Result)) []Result {
 	results := make([]Result, 0, 64)
 	mu      := sync.Mutex{}

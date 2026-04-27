@@ -116,7 +116,6 @@ var probeSpecs = []probeSpec{
 	}},
 }
 
-// ProbeVersionEndpoints tries version-disclosure endpoints and returns additional detected products.
 func ProbeVersionEndpoints(scheme, host string, port int) []Match {
 	var all []Match
 	base := scheme + "://" + host

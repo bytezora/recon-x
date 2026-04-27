@@ -1,7 +1,3 @@
-// Package vulns detects known CVEs by matching service banners and HTTP response
-// headers against an embedded database with precise version-range comparisons.
-//
-// No external API calls. No rate limits. Works fully offline.
 package vulns
 
 import (
@@ -12,7 +8,6 @@ import (
 	"strings"
 )
 
-// Match represents a CVE finding for a specific host and service.
 type Match struct {
 	Host        string  `json:"host"`
 	Port        int     `json:"port"`
@@ -22,14 +17,13 @@ type Match struct {
 	Severity    string  `json:"severity"`
 	Description string  `json:"description"`
 	Link        string  `json:"link"`
+	Confidence  string  `json:"confidence"`
 }
 
 type version struct{ parts []int }
 
 func (v version) valid() bool { return len(v.parts) > 0 }
 
-// parseVersion converts "7.4.3", "8.9p1", "1.18.0-ubuntu2" → {[7,4,3]}.
-// Letters and dashes after the first numeric component are stripped.
 func parseVersion(s string) version {
 	s = strings.TrimPrefix(s, "v")
 	end := len(s)
@@ -58,7 +52,6 @@ func parseVersion(s string) version {
 	return version{parts: nums}
 }
 
-// cmp returns -1, 0, or +1.
 func (v version) cmp(o version) int {
 	n := len(v.parts)
 	if len(o.parts) > n {
@@ -85,35 +78,28 @@ func (v version) cmp(o version) int {
 func (v version) gte(o version) bool { return v.cmp(o) >= 0 }
 func (v version) lte(o version) bool { return v.cmp(o) <= 0 }
 
-// v is a shorthand for inline version literals inside the database.
 func v(s string) version { return parseVersion(s) }
 
 type extractor struct {
 	product string
-	re      *regexp.Regexp // version captured in group 1
+	re      *regexp.Regexp
 }
 
 var bannerExtractors = []extractor{
-	// SSH
 	{"openssh", regexp.MustCompile(`OpenSSH[_/](\d+\.\d+[\d.]*)`)},
-	// HTTP servers (raw TCP banner from a HEAD request)
 	{"apache", regexp.MustCompile(`Apache/([\d.]+)`)},
 	{"nginx", regexp.MustCompile(`nginx/([\d.]+)`)},
 	{"iis", regexp.MustCompile(`Microsoft-IIS/([\d.]+)`)},
 	{"lighttpd", regexp.MustCompile(`lighttpd/([\d.]+)`)},
 	{"tomcat", regexp.MustCompile(`Apache Tomcat/([\d.]+)`)},
-	// FTP
 	{"vsftpd", regexp.MustCompile(`vsftpd\s+([\d.]+)`)},
 	{"proftpd", regexp.MustCompile(`ProFTPD\s+([\d.]+)`)},
-	// SMTP
 	{"exim", regexp.MustCompile(`Exim\s+([\d.]+)`)},
 	{"sendmail", regexp.MustCompile(`Sendmail\s+([\d.]+)`)},
-	// Databases
 	{"mysql",      regexp.MustCompile(`([\d.]+)-[Mm]y[Ss][Qq][Ll]`)},
 	{"redis",      regexp.MustCompile(`Redis server v=([\d.]+)`)},
 	{"mongodb",    regexp.MustCompile(`MongoDB\s+([\d.]+)`)},
 	{"postgresql", regexp.MustCompile(`PostgreSQL\s+([\d.]+)`)},
-	// Other
 	{"samba",      regexp.MustCompile(`Samba\s+([\d.]+)`)},
 	{"php",        regexp.MustCompile(`PHP/([\d.]+)`)},
 	{"solr",       regexp.MustCompile(`(?i)Apache[ -]Solr[/ ]([\d.]+)`)},
@@ -131,7 +117,7 @@ var headerExtractors = []struct {
 	header       string
 	product      string
 	re           *regexp.Regexp
-	presenceOnly bool // true = any non-empty header value fires ALL CVEs for product
+	presenceOnly bool
 }{
 	{"Server", "apache", regexp.MustCompile(`Apache/([\d.]+)`), false},
 	{"Server", "nginx", regexp.MustCompile(`nginx/([\d.]+)`), false},
@@ -141,35 +127,25 @@ var headerExtractors = []struct {
 	{"X-Powered-By", "php", regexp.MustCompile(`PHP/([\d.]+)`), false},
 	{"X-Generator", "wordpress", regexp.MustCompile(`WordPress ([\d.]+)`), false},
 	{"X-Jenkins", "jenkins", regexp.MustCompile(`([\d.]+)`), false},
-	{"X-Jenkins-Session", "jenkins", regexp.MustCompile(`.+`), true}, // presence-only: fires all Jenkins CVEs
+	{"X-Jenkins-Session", "jenkins", regexp.MustCompile(`.+`), true},
 	{"Server",                "grafana", regexp.MustCompile(`(?i)Grafana/([\d.]+)`),   false},
 	{"X-Generator",           "drupal",  regexp.MustCompile(`(?i)Drupal\s+([\d.]+)`), false},
 	{"X-Drupal-Cache",        "drupal",  regexp.MustCompile(`.+`),                     true},
 	{"X-Application-Context",        "spring",     regexp.MustCompile(`.+`),                         true},
-	// Atlassian Confluence
 	{"X-Confluence-Request-Time",    "confluence", regexp.MustCompile(`.+`),                         true},
 	{"X-Confluence-Cluster-Node-Id", "confluence", regexp.MustCompile(`.+`),                         true},
-	// Atlassian Jira
 	{"X-AREQUESTID",                 "jira",       regexp.MustCompile(`.+`),                         true},
-	// Adobe ColdFusion
 	{"X-Powered-By",                 "coldfusion", regexp.MustCompile(`(?i)ColdFusion/([\d.]+)`),   false},
 	{"X-Powered-By",                 "coldfusion", regexp.MustCompile(`(?i)^ColdFusion$`),           true},
-	// F5 BIG-IP — Server header and BIGipServer cookie
 	{"Server",                       "bigip",      regexp.MustCompile(`(?i)BigIP`),                  true},
 	{"Set-Cookie",                   "bigip",      regexp.MustCompile(`(?i)BIGipServer`),             true},
-	// Citrix ADC / NetScaler — NSC_ session cookie is a reliable indicator
 	{"Set-Cookie",                   "citrix",     regexp.MustCompile(`(?i)NSC_[a-zA-Z0-9]`),        true},
-	// Apache Solr via Server header
 	{"Server",                       "solr",       regexp.MustCompile(`(?i)Solr/([\d.]+)`),          false},
-	// Microsoft Exchange
 	{"X-OWA-Version",           "exchange",  regexp.MustCompile(`([\d.]+)`),                false},
 	{"X-MS-Diagnostics",        "exchange",  regexp.MustCompile(`.+`),                       true},
-	// GitLab
 	{"X-GitLab-Meta-Caller-Id", "gitlab",    regexp.MustCompile(`.+`),                       true},
 	{"X-Recruiting",            "gitlab",    regexp.MustCompile(`.+`),                       true},
-	// Nexus Repository
 	{"Server",                  "nexus",     regexp.MustCompile(`(?i)Nexus/([\d.]+)`),       false},
-	// Harbor container registry
 	{"Server",                  "harbor",    regexp.MustCompile(`(?i)Harbor/([\d.]+)`),      false},
 }
 
@@ -184,71 +160,49 @@ var bodyExtractors = []struct {
 	{"spring",        regexp.MustCompile(`(?i)Spring[ -]Framework[/ ]([\d.]+)`), false},
 	{"grafana",       regexp.MustCompile(`"version"\s*:\s*"([\d.]+)"`), false},
 	{"elasticsearch", regexp.MustCompile(`"number"\s*:\s*"([\d.]+)"`), false},
-	// Atlassian Confluence — version from meta tag or page content
 	{"confluence", regexp.MustCompile(`(?i)<meta[^>]+name=["']ajs-version-number["'][^>]*content=["']([\d.]+)`), false},
 	{"confluence", regexp.MustCompile(`(?i)Confluence[/ ]([\d.]+)`), false},
 	{"confluence", regexp.MustCompile(`(?i)com-atlassian-confluence`), true},
-	// Atlassian Jira — presence via application-name meta, version from page text
 	{"jira", regexp.MustCompile(`(?i)<meta[^>]+name=["']application-name["'][^>]*content=["']JIRA`), true},
 	{"jira", regexp.MustCompile(`(?i)Atlassian Jira[^<(]*([\d]+\.[\d]+\.[\d.]*)`), false},
-	// Apache Solr — version from admin UI or title
 	{"solr", regexp.MustCompile(`(?i)Apache Solr[/ ]([\d.]+)`), false},
 	{"solr", regexp.MustCompile(`(?i)<title>[^<]*Apache Solr`), true},
-	// Log4j — via Spring Boot actuator /actuator/info or error stacktraces
 	{"log4j", regexp.MustCompile(`"log4j-core"[^}]*"version"\s*:\s*"([\d.]+)`), false},
 	{"log4j", regexp.MustCompile(`log4j-core-([\d.]+)\.jar`), false},
-	// VMware vCenter — version string or presence via client title
 	{"vmware", regexp.MustCompile(`(?i)VMware vCenter Server ([\d.]+)`), false},
 	{"vmware", regexp.MustCompile(`(?i)vSphere (Web )?Client`), true},
-	// F5 BIG-IP — presence via page title or branding
 	{"bigip", regexp.MustCompile(`(?i)<title>[^<]*BIG-IP`), true},
 	{"bigip", regexp.MustCompile(`(?i)F5 Networks`), true},
-	// Adobe ColdFusion — version from error pages or presence
 	{"coldfusion", regexp.MustCompile(`(?i)ColdFusion[/ ]([\d.]+)`), false},
 	{"coldfusion", regexp.MustCompile(`(?i)Adobe ColdFusion`), true},
-	// GitLab
 	{"gitlab",     regexp.MustCompile(`(?i)GitLab[/ ]([\d.]+)`), false},
 	{"gitlab",     regexp.MustCompile(`(?i)gitlab-instance`), true},
-	// Nexus Repository Manager
 	{"nexus",      regexp.MustCompile(`(?i)Nexus Repository Manager\s+([\d.]+)`), false},
 	{"nexus",      regexp.MustCompile(`(?i)Sonatype Nexus`), true},
-	// Microsoft Exchange / OWA
 	{"exchange",   regexp.MustCompile(`(?i)Microsoft Exchange`), true},
 	{"exchange",   regexp.MustCompile(`(?i)Outlook Web App`), true},
-	// Zimbra
 	{"zimbra",     regexp.MustCompile(`(?i)Zimbra[/ ]([\d.]+)`), false},
 	{"zimbra",     regexp.MustCompile(`(?i)Zimbra Web Client`), true},
-	// Joomla
 	{"joomla",     regexp.MustCompile(`(?i)<meta[^>]+name=["']generator["'][^>]*content=["']Joomla[! ]([\d.]+)`), false},
 	{"joomla",     regexp.MustCompile(`(?i)/components/com_content/`), true},
-	// Magento / Adobe Commerce
 	{"magento",    regexp.MustCompile(`(?i)Magento[/ ]([\d.]+)`), false},
 	{"magento",    regexp.MustCompile(`(?i)var BLANK_URL = ['"][^'"]*\/pub\/`), true},
-	// Roundcube Webmail
 	{"roundcube",  regexp.MustCompile(`(?i)Roundcube Webmail[/ ]*([\d.]+)`), false},
 	{"roundcube",  regexp.MustCompile(`(?i)Roundcube Webmail`), true},
-	// Keycloak
 	{"keycloak",   regexp.MustCompile(`(?i)Keycloak[/ ]*([\d.]+)`), false},
 	{"keycloak",   regexp.MustCompile(`(?i)keycloak-theme`), true},
-	// Apache ActiveMQ admin console
 	{"activemq",   regexp.MustCompile(`(?i)Apache ActiveMQ[/ ]*([\d.]+)`), false},
 	{"activemq",   regexp.MustCompile(`(?i)activemq`), true},
-	// WebLogic
 	{"weblogic",   regexp.MustCompile(`(?i)WebLogic Server ([\d.]+)`), false},
 	{"weblogic",   regexp.MustCompile(`(?i)WebLogic`), true},
-	// Fortinet FortiGate SSL-VPN
 	{"fortinet",   regexp.MustCompile(`(?i)FortiGate`), true},
 	{"fortinet",   regexp.MustCompile(`(?i)FortiOS[/ ]*([\d.]+)`), false},
-	// Pulse Secure / Ivanti Connect Secure
 	{"pulse",      regexp.MustCompile(`(?i)Pulse (Connect|Secure)[/ ]*([\d.]+)`), false},
 	{"pulse",      regexp.MustCompile(`(?i)(Pulse Connect Secure|Ivanti Connect Secure)`), true},
-	// Harbor container registry
 	{"harbor",     regexp.MustCompile(`(?i)Harbor[/ ]*([\d.]+)`), false},
 	{"harbor",     regexp.MustCompile(`(?i)goharbor`), true},
-	// Kubernetes dashboard / API
 	{"kubernetes", regexp.MustCompile(`(?i)"gitVersion"\s*:\s*"v([\d.]+)`), false},
 	{"kubernetes", regexp.MustCompile(`(?i)Kubernetes`), true},
-	// OpenSSL (in error pages or banners)
 	{"openssl",    regexp.MustCompile(`OpenSSL/([\d.]+[a-z]?)`), false},
 }
 
@@ -256,7 +210,7 @@ type detected struct {
 	product      string
 	ver          version
 	raw          string
-	presenceOnly bool // header present but no version extractable
+	presenceOnly bool
 }
 
 func fromBanner(banner string) []detected {
@@ -290,14 +244,12 @@ func fromHeaders(h http.Header) []detected {
 	var out []detected
 	seen := make(map[string]bool)
 	for _, ex := range headerExtractors {
-		// Use all values for multi-value headers (critical for Set-Cookie)
 		vals := h[textproto.CanonicalMIMEHeaderKey(ex.header)]
 		if len(vals) == 0 {
 			continue
 		}
 		val := strings.Join(vals, "; ")
 		if ex.presenceOnly {
-			// Check regex even for presenceOnly: distinguishes products on shared headers (Set-Cookie)
 			if !ex.re.MatchString(val) {
 				continue
 			}
@@ -365,11 +317,10 @@ type cveEntry struct {
 	cvss     float64
 	severity string
 	desc     string
-	minVer   version // inclusive lower bound
-	maxVer   version // inclusive upper bound
+	minVer   version
+	maxVer   version
 }
 
-// inRange returns true when minVer <= d.ver <= maxVer.
 func inRange(e cveEntry, d detected) bool {
 	if !d.ver.valid() {
 		return false
@@ -377,8 +328,6 @@ func inRange(e cveEntry, d detected) bool {
 	return d.ver.gte(e.minVer) && d.ver.lte(e.maxVer)
 }
 
-// db is the embedded CVE database sorted by product.
-// Sources: NVD, CISA KEV, CVEdetails.com — all entries public knowledge.
 var db = []cveEntry{
 
 	{"apache", "CVE-2023-25690", 9.8, "CRITICAL", "HTTP request smuggling via mod_proxy rewrite (≤ 2.4.55)", v("2.0"), v("2.4.55")},
@@ -615,8 +564,6 @@ func buildMatches(host string, port int, rawBanner string, detections []detected
 			if d.product != e.product {
 				continue
 			}
-			// Presence-only detection fires all CVEs for the product.
-			// Version-matched detection requires the version to be in range.
 			if !d.presenceOnly && !inRange(e, d) {
 				continue
 			}
@@ -624,6 +571,10 @@ func buildMatches(host string, port int, rawBanner string, detections []detected
 				continue
 			}
 			seenCVE[e.cve] = true
+			confidence := "high"
+			if d.presenceOnly {
+				confidence = "low"
+			}
 			matches = append(matches, Match{
 				Host:        host,
 				Port:        port,
@@ -633,19 +584,17 @@ func buildMatches(host string, port int, rawBanner string, detections []detected
 				Severity:    e.severity,
 				Description: e.desc,
 				Link:        nvdBase + e.cve,
+				Confidence:  confidence,
 			})
 		}
 	}
 	return matches
 }
 
-// CheckBanner checks a raw TCP service banner (e.g. SSH, FTP, SMTP) against
-// the embedded CVE database using version-range comparison.
 func CheckBanner(host string, port int, banner string) []Match {
 	return buildMatches(host, port, banner, fromBanner(banner))
 }
 
-// CheckHTTPFull checks HTTP response headers AND body against the CVE database.
 func CheckHTTPFull(host string, port int, h http.Header, body string) []Match {
 	if h == nil {
 		return nil
@@ -656,7 +605,6 @@ func CheckHTTPFull(host string, port int, h http.Header, body string) []Match {
 	return buildMatches(host, port, server, detections)
 }
 
-// CheckHTTP checks only HTTP response headers (legacy — prefer CheckHTTPFull).
 func CheckHTTP(host string, port int, h http.Header) []Match {
 	return CheckHTTPFull(host, port, h, "")
 }
