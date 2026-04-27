@@ -1,6 +1,7 @@
 package ghsearch
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -43,7 +44,13 @@ func Search(target, token string, onFound func(Finding)) []Finding {
 		fmt.Sprintf("%q", target),
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			Proxy:           http.ProxyFromEnvironment,
+		},
+	}
 	var all []Finding
 	seen := make(map[string]bool)
 

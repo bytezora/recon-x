@@ -56,6 +56,7 @@ func Discover(httpResults []httpcheck.Result, threads int, onFound func(Result))
 		Timeout: 6 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			Proxy:           http.ProxyFromEnvironment,
 		},
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse

@@ -1,7 +1,7 @@
 # recon-x
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.5.0-39ff14?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.6.0-39ff14?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square&color=39ff14)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
 
@@ -40,18 +40,29 @@ recon-x -target example.com
 recon-x -target example.com -output report.html -json out.json -threads 100
 recon-x -target example.com -no-passive -ports 80,443,8080,8443
 recon-x -target example.com -github-token ghp_xxxx
+recon-x -target example.com -proxy http://127.0.0.1:8080
+recon-x -target example.com -scope-file scope.txt -sarif results.sarif
+recon-x -target example.com -notify-slack https://hooks.slack.com/... -notify-telegram TOKEN@CHATID
+recon-x -target example.com -resume
 ```
 
 ```
--target         domain to scan                     (required)
--output         html report path                   (default: report.html)
--json           json output                        (optional)
--wordlist       custom subdomain wordlist
--ports          comma-separated ports
--threads        concurrency                        (default: 50)
--no-passive     skip crt.sh lookup
--github-token   GitHub PAT for code search dorking (optional)
--version        print version
+-target              domain to scan                              (required)
+-output              html report path                            (default: report.html)
+-json                json output                                 (optional)
+-sarif               SARIF 2.1.0 output path for CI/CD          (optional)
+-wordlist            custom subdomain wordlist
+-dir-wordlist        custom paths wordlist for dir brute
+-ports               comma-separated ports
+-threads             concurrency                                 (default: 50)
+-no-passive          skip crt.sh lookup
+-github-token        GitHub PAT for code search dorking          (optional)
+-proxy               HTTP/HTTPS proxy URL                        (optional, e.g. http://127.0.0.1:8080)
+-scope-file          path to scope file, one entry per line      (optional, *.example.com or 10.0.0.0/8)
+-notify-slack        Slack incoming webhook URL for alerts       (optional)
+-notify-telegram     Telegram TOKEN@CHATID for alerts            (optional)
+-resume              resume interrupted scan from state file     (optional)
+-version             print version
 ```
 
 ---

@@ -30,6 +30,7 @@ var httpClient = &http.Client{
 	Timeout: 6 * time.Second,
 	Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		Proxy:           http.ProxyFromEnvironment,
 	},
 	CheckRedirect: func(*http.Request, []*http.Request) error {
 		return http.ErrUseLastResponse

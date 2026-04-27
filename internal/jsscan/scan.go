@@ -49,6 +49,7 @@ var client = &http.Client{
 Timeout: fetchTimeout,
 Transport: &http.Transport{
 TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+Proxy:           http.ProxyFromEnvironment,
 },
 }
 
