@@ -1,5 +1,3 @@
-// recon-x — all-in-one web reconnaissance tool
-// https://github.com/bytezora/recon-x
 package main
 
 import (
@@ -47,8 +45,6 @@ var (
 	styleRed    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4757"))
 )
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
 type Config struct {
 	Target      string
 	Output      string
@@ -59,8 +55,6 @@ type Config struct {
 	Threads     int
 	NoPassive   bool
 }
-
-// ── Entry point ───────────────────────────────────────────────────────────────
 
 func main() {
 	cfg := parseFlags()
@@ -97,7 +91,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// ── Post-scan output ───────────────────────────────────────────────────
 	if err := report.Generate(cfg.Target, finalSubs, finalPorts, finalHTTP,
 		finalVulns, finalWAFs, finalDirs, finalJS, cfg.Output); err != nil {
 		fail("report error: %v", err)
@@ -119,8 +112,6 @@ func main() {
 		styleGreen.Render(time.Since(start).Round(time.Second).String()))
 }
 
-// ── Scan pipeline ─────────────────────────────────────────────────────────────
-
 func runScans(
 	cfg   Config,
 	prog  *tea.Program,
@@ -132,7 +123,6 @@ func runScans(
 	dirs  *[]dirbust.Hit,
 	jsf   *[]jsscan.Finding,
 ) {
-	// Step 0: Passive recon via crt.sh
 	prog.Send(ui.StepStartMsg(0))
 	var passiveNames []string
 	if !cfg.NoPassive {
@@ -143,7 +133,6 @@ func runScans(
 	}
 	prog.Send(ui.StepDoneMsg{Step: 0, Count: len(passiveNames)})
 
-	// Step 1: DNS brute-force
 	prog.Send(ui.StepStartMsg(1))
 	*subs = subdomain.Enumerate(cfg.Target, cfg.Threads, cfg.Wordlist, func(r subdomain.Result) {
 		prog.Send(ui.ItemMsg{
@@ -159,7 +148,6 @@ func runScans(
 	})
 	prog.Send(ui.StepDoneMsg{Step: 1, Count: len(*subs)})
 
-	// Step 2: Port scan + vuln matching
 	prog.Send(ui.StepStartMsg(2))
 	portList := parsePortList(cfg.Ports)
 	*ports = portscan.Scan(*subs, portList, cfg.Threads, func(r portscan.Result) {
@@ -176,7 +164,6 @@ func runScans(
 			),
 		})
 	})
-	// CVE matching on banners
 	for _, p := range *ports {
 		if p.Banner == "" {
 			continue
@@ -193,7 +180,6 @@ func runScans(
 	}
 	prog.Send(ui.StepDoneMsg{Step: 2, Count: len(*ports)})
 
-	// Step 3: HTTP fingerprint + WAF detection
 	prog.Send(ui.StepStartMsg(3))
 	*http = httpcheck.Check(*ports, cfg.Threads)
 	for _, h := range *http {
@@ -206,7 +192,6 @@ func runScans(
 				})
 			}
 		}
-		// CVE detection from HTTP Server / X-Powered-By headers
 		if matches := vulns.CheckHTTPFull(h.Host, h.Port, h.Headers, h.Body); len(matches) > 0 {
 			*vs = append(*vs, matches...)
 			for _, m := range matches {
@@ -216,7 +201,6 @@ func runScans(
 				})
 			}
 		}
-		// Probe version disclosure endpoints (Spring actuator, GitLab API, Solr admin, etc.)
 		{
 			scheme := "http"
 			if h.Port == 443 || h.Port == 8443 {
@@ -235,7 +219,6 @@ func runScans(
 	}
 	prog.Send(ui.StepDoneMsg{Step: 3, Count: len(*http)})
 
-	// Step 4: Directory brute-force
 	prog.Send(ui.StepStartMsg(4))
 	baseURLs := make([]string, 0, len(*http))
 	for _, h := range *http {
@@ -252,7 +235,6 @@ func runScans(
 	})
 	prog.Send(ui.StepDoneMsg{Step: 4, Count: len(*dirs)})
 
-	// Step 5: JS scraping
 	prog.Send(ui.StepStartMsg(5))
 	pages := make(map[string]string, len(*http))
 	for _, h := range *http {
@@ -272,8 +254,6 @@ func runScans(
 	})
 	prog.Send(ui.StepDoneMsg{Step: 5, Count: len(*jsf)})
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 func parseFlags() Config {
 	target      := flag.String("target",       "",            "Target domain  (e.g. example.com)")

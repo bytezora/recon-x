@@ -1,5 +1,3 @@
-// Package vulns — probe.go tries well-known version endpoints on HTTP services
-// to extract product/version information that may not appear in headers or body of /.
 package vulns
 
 import (
@@ -21,11 +19,10 @@ var probeClient = &http.Client{
 type probeSpec struct {
 	path    string
 	product string
-	extract func(body string) string // returns version or ""
+	extract func(body string) string
 }
 
 var probeSpecs = []probeSpec{
-	// Spring Boot actuator — reports Log4j version, Spring version, etc.
 	{"/actuator/info", "springboot", func(body string) string {
 		var m map[string]interface{}
 		if json.Unmarshal([]byte(body), &m) != nil {
@@ -60,7 +57,6 @@ var probeSpecs = []probeSpec{
 		}
 		return sub[:idx4]
 	}},
-	// GitLab version API
 	{"/api/v4/version", "gitlab", func(body string) string {
 		var m map[string]string
 		if json.Unmarshal([]byte(body), &m) != nil {
@@ -68,7 +64,6 @@ var probeSpecs = []probeSpec{
 		}
 		return m["version"]
 	}},
-	// Kubernetes API version
 	{"/version", "kubernetes", func(body string) string {
 		var m map[string]string
 		if json.Unmarshal([]byte(body), &m) != nil {
@@ -77,7 +72,6 @@ var probeSpecs = []probeSpec{
 		v := m["gitVersion"]
 		return strings.TrimPrefix(v, "v")
 	}},
-	// Elasticsearch cluster stats
 	{"/_cluster/stats", "elasticsearch", func(body string) string {
 		idx := strings.Index(body, `"number"`)
 		if idx < 0 {
@@ -95,7 +89,6 @@ var probeSpecs = []probeSpec{
 		}
 		return sub[:idx3]
 	}},
-	// Apache Solr info
 	{"/solr/admin/info/system?wt=json", "solr", func(body string) string {
 		idx := strings.Index(body, `"solr-spec-version"`)
 		if idx < 0 {
@@ -113,9 +106,7 @@ var probeSpecs = []probeSpec{
 		}
 		return sub[:idx3]
 	}},
-	// Nexus
 	{"/service/rest/v1/status/check", "nexus", func(body string) string { return "" }},
-	// Grafana API
 	{"/api/health", "grafana", func(body string) string {
 		var m map[string]string
 		if json.Unmarshal([]byte(body), &m) != nil {

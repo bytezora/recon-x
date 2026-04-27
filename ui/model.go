@@ -10,8 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 var (
 	stylePurple  = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
 	styleGreen   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF87")).Bold(true)
@@ -29,8 +27,6 @@ var (
 			Padding(0, 2)
 )
 
-// ── Messages ──────────────────────────────────────────────────────────────────
-
 type ItemMsg struct {
 	Icon string
 	Text string
@@ -39,8 +35,6 @@ type ItemMsg struct {
 type StepStartMsg int
 type StepDoneMsg  struct{ Step int; Count int }
 type DoneMsg      struct{}
-
-// ── Step state ────────────────────────────────────────────────────────────────
 
 type stepState int
 
@@ -55,8 +49,6 @@ type step struct {
 	state stepState
 	count int
 }
-
-// ── Model ─────────────────────────────────────────────────────────────────────
 
 const maxItems = 12
 
@@ -90,8 +82,6 @@ func New(target string) Model {
 		width:   80,
 	}
 }
-
-// ── Init / Update / View ──────────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
 	return m.spinner.Tick
@@ -143,13 +133,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
-	// ── Header ────────────────────────────────────────────────────────────────
 	b.WriteString(styleHeader.Render(
 		fmt.Sprintf(" recon-x  ·  %s ", styleYellow.Render(m.target)),
 	))
 	b.WriteString("\n\n")
 
-	// ── Steps ─────────────────────────────────────────────────────────────────
 	for i, s := range m.steps {
 		var icon, label string
 		switch s.state {
@@ -174,7 +162,6 @@ func (m Model) View() string {
 
 	b.WriteString("\n")
 
-	// ── Live items ────────────────────────────────────────────────────────────
 	if len(m.items) > 0 {
 		lines := make([]string, len(m.items))
 		for i, item := range m.items {
@@ -185,7 +172,6 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	// ── Footer ────────────────────────────────────────────────────────────────
 	if m.done {
 		b.WriteString("\n  " + styleGreen.Render("◆  Scan complete") + "\n")
 	} else {

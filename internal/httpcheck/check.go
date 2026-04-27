@@ -19,23 +19,18 @@ httpTimeout = 10 * time.Second
 bodyLimit   = 512 * 1024
 )
 
-// httpPorts defines which ports are treated as HTTP services.
 var httpPorts = map[int]bool{
 80: true, 443: true,
-// Common dev / app servers
 3000: true, 4000: true, 5000: true,
 8000: true, 8001: true, 8008: true,
 8080: true, 8443: true, 8888: true,
-// Alternate TLS
 4443: true, 7443: true,
-// Infrastructure / observability
 9000: true, 9090: true, // Prometheus
 9200: true, 9300: true, // Elasticsearch
 5601: true,             // Kibana
 15672: true,            // RabbitMQ management
 }
 
-// secHeaders are the security headers we check for presence/absence.
 var secHeaders = []string{
 "Strict-Transport-Security",
 "Content-Security-Policy",

@@ -67,7 +67,6 @@ func GrabConn(conn net.Conn, port int) string {
 	return line
 }
 
-// grabHTTP sends an HTTP HEAD request and extracts the Server header value.
 func grabHTTP(conn net.Conn) string {
 	host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	fmt.Fprintf(conn, "HEAD / HTTP/1.0\r\nHost: %s\r\n\r\n", host) //nolint:errcheck
@@ -76,7 +75,7 @@ func grabHTTP(conn net.Conn) string {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
-			break // end of HTTP headers
+			break
 		}
 		lower := strings.ToLower(line)
 		if strings.HasPrefix(lower, "server:") {
@@ -90,7 +89,6 @@ func grabHTTP(conn net.Conn) string {
 	return ""
 }
 
-// grabRedis sends INFO server and parses the redis_version field.
 func grabRedis(conn net.Conn) string {
 	fmt.Fprintf(conn, "INFO server\r\n") //nolint:errcheck
 	scanner := bufio.NewScanner(conn)
@@ -104,10 +102,7 @@ func grabRedis(conn net.Conn) string {
 	return ""
 }
 
-// grabMySQL reads the MySQL initial handshake packet and extracts the server version.
-// MySQL sends: 3-byte payload length + 1-byte seq + 1-byte protocol(10) + null-terminated version string.
 func grabMySQL(conn net.Conn) string {
-	// Read 4-byte packet header
 	hdr := make([]byte, 4)
 	if _, err := io.ReadFull(conn, hdr); err != nil {
 		return ""
@@ -120,24 +115,20 @@ func grabMySQL(conn net.Conn) string {
 	if _, err := io.ReadFull(conn, payload); err != nil {
 		return ""
 	}
-	// Protocol version 10 = MySQL 4.1+
 	if payload[0] != 10 {
 		return ""
 	}
-	// Version string is null-terminated starting at payload[1]
 	null := bytes.IndexByte(payload[1:], 0)
 	if null < 0 {
 		return ""
 	}
-	full := string(payload[1 : 1+null]) // e.g. "8.0.26-community"
-	// Strip distribution suffix to get clean version: "8.0.26"
+	full := string(payload[1 : 1+null])
 	if dash := strings.IndexByte(full, '-'); dash > 0 {
 		full = full[:dash]
 	}
 	return full + "-MySQL"
 }
 
-// grabMemcached sends "version\r\n" and parses "VERSION X.Y.Z"
 func grabMemcached(conn net.Conn) string {
 	fmt.Fprintf(conn, "version\r\n") //nolint:errcheck
 	scanner := bufio.NewScanner(conn)
@@ -151,7 +142,6 @@ func grabMemcached(conn net.Conn) string {
 	return ""
 }
 
-// grabZookeeper sends "srvr\r\n" and parses the version line
 func grabZookeeper(conn net.Conn) string {
 	fmt.Fprintf(conn, "srvr\r\n") //nolint:errcheck
 	scanner := bufio.NewScanner(conn)
@@ -172,7 +162,6 @@ func grabZookeeper(conn net.Conn) string {
 	return ""
 }
 
-// grabActiveMQ reads the OpenWire banner from port 61616
 func grabActiveMQ(conn net.Conn) string {
 	scanner := bufio.NewScanner(conn)
 	for i := 0; i < 5 && scanner.Scan(); i++ {
@@ -192,10 +181,7 @@ func isHTTP(port int) bool {
 	return false
 }
 
-// grabPostgres sends a PostgreSQL v3.0 startup message and reads ParameterStatus
-// messages looking for server_version. Only works when server trusts the connection.
 func grabPostgres(conn net.Conn) string {
-	// Startup message (no type byte): length(4BE) + protocol(4BE) + params
 	params := []byte("user\x00postgres\x00database\x00postgres\x00\x00")
 	totalLen := 8 + len(params)
 	startup := make([]byte, totalLen)
@@ -210,7 +196,6 @@ func grabPostgres(conn net.Conn) string {
 		return ""
 	}
 
-	// Read backend messages looking for server_version in ParameterStatus
 	for i := 0; i < 32; i++ {
 		hdr := make([]byte, 5)
 		if _, err := io.ReadFull(conn, hdr); err != nil {
@@ -229,7 +214,7 @@ func grabPostgres(conn net.Conn) string {
 			}
 		}
 		switch msgType {
-		case 'S': // ParameterStatus: name\0value\0
+		case 'S':
 			null := bytes.IndexByte(body, 0)
 			if null < 0 {
 				continue
@@ -243,24 +228,21 @@ func grabPostgres(conn net.Conn) string {
 				}
 				return "PostgreSQL " + string(rest[:null2])
 			}
-		case 'R': // AuthenticationRequest
+		case 'R':
 			if bodyLen >= 4 {
 				authType := int(body[0])<<24 | int(body[1])<<16 | int(body[2])<<8 | int(body[3])
 				if authType != 0 {
-					return "" // requires password — version not available
+					return ""
 				}
-				// authType == 0 → AuthenticationOk, continue reading ParameterStatus
 			}
-		case 'E', 'Z': // ErrorResponse or ReadyForQuery — stop
+		case 'E', 'Z':
 			return ""
 		}
 	}
 	return ""
 }
 
-// grabMongoDB sends an OP_MSG isMaster command and extracts the server version.
 func grabMongoDB(conn net.Conn) string {
-	// BSON document: {isMaster:1, $db:"admin"} — length 34 = 0x22
 	bsonDoc := []byte{
 		0x22, 0x00, 0x00, 0x00, // doc length = 34
 		0x10, 'i', 's', 'M', 'a', 's', 't', 'e', 'r', 0x00, // int32 key
@@ -286,7 +268,6 @@ func grabMongoDB(conn net.Conn) string {
 		return ""
 	}
 
-	// Read response header (16 bytes)
 	hdr := make([]byte, 16)
 	if _, err := io.ReadFull(conn, hdr); err != nil {
 		return ""
@@ -299,11 +280,9 @@ func grabMongoDB(conn net.Conn) string {
 	if _, err := io.ReadFull(conn, body); err != nil {
 		return ""
 	}
-	// body[0:4]=flagBits, body[4]=section kind, body[5:]=BSON
 	if len(body) < 5 || body[4] != 0 {
 		return ""
 	}
-	// Scan BSON for string field named "version"
 	target := append([]byte{0x02}, []byte("version\x00")...)
 	idx := bytes.Index(body[5:], target)
 	if idx < 0 {

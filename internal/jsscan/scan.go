@@ -20,8 +20,6 @@ Label  string // secret type label or "endpoint"
 Value  string // the matched value
 }
 
-// ── Patterns ──────────────────────────────────────────────────────────────────
-
 var (
 reScriptSrc = regexp.MustCompile(`(?i)<script[^>]+src=["']([^"']+\.js[^"']*)["']`)
 reEndpoint  = regexp.MustCompile(`["'](/(?:api|v\d|graphql|rest|service)[a-zA-Z0-9/_\-.?=&]{2,64})["']`)
@@ -73,7 +71,6 @@ results := make([]Finding, 0, 32)
 mu      := sync.Mutex{}
 sem     := make(chan struct{}, threads)
 wg      := sync.WaitGroup{}
-// global dedup across all JS files: kind+":"+value
 seen := make(map[string]bool)
 seenMu := sync.Mutex{}
 

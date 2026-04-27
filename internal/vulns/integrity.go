@@ -10,9 +10,7 @@ import (
 	"strings"
 )
 
-// dbExpectedHash is the SHA-256 fingerprint of the bundled CVE database.
-// Regenerate with: recon-x -db-hash
-// Any modification to db[] without updating this constant causes startup failure.
+// Regenerate: recon-x -db-hash
 const dbExpectedHash = "99450bba69662261f02a09c00e4d4b01991c6d88c7627417b9ee59f45b8bae67"
 
 func init() {
@@ -21,7 +19,7 @@ func init() {
 
 func verifyDB() {
 	if dbExpectedHash == "TBD" {
-		return // initial build — hash not yet stamped
+		return
 	}
 	got := ComputeDBHash()
 	if got != dbExpectedHash {
