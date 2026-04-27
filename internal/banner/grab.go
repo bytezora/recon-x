@@ -95,6 +95,20 @@ func GrabConn(conn net.Conn, port int) string {
 		return ""
 	}
 	line := strings.TrimSpace(scanner.Text())
+	fp := FingerprintBanner(line)
+	if fp.Service != "" && fp.Version != "" {
+		result := fp.Service + " " + fp.Version
+		if len(result) > maxLen {
+			return result[:maxLen] + "…"
+		}
+		return result
+	}
+	if fp.Service != "" {
+		if len(fp.Service) > maxLen {
+			return fp.Service[:maxLen] + "…"
+		}
+		return fp.Service
+	}
 	if len(line) > maxLen {
 		return line[:maxLen] + "…"
 	}
@@ -105,20 +119,42 @@ func grabHTTP(conn net.Conn) string {
 	host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	fmt.Fprintf(conn, "HEAD / HTTP/1.0\r\nHost: %s\r\n\r\n", host)
 
+	var sb strings.Builder
+	serverVal := ""
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
 			break
 		}
+		sb.WriteString(line)
+		sb.WriteString("\n")
 		lower := strings.ToLower(line)
-		if strings.HasPrefix(lower, "server:") {
-			val := strings.TrimSpace(line[7:])
-			if len(val) > maxLen {
-				return val[:maxLen] + "…"
-			}
-			return val
+		if strings.HasPrefix(lower, "server:") && serverVal == "" {
+			serverVal = strings.TrimSpace(line[7:])
 		}
+	}
+	headers := sb.String()
+
+	fp := FingerprintBanner(headers)
+	if fp.Service != "" && fp.Version != "" {
+		result := fp.Service + " " + fp.Version
+		if len(result) > maxLen {
+			return result[:maxLen] + "…"
+		}
+		return result
+	}
+	if fp.Service != "" {
+		if len(fp.Service) > maxLen {
+			return fp.Service[:maxLen] + "…"
+		}
+		return fp.Service
+	}
+	if serverVal != "" {
+		if len(serverVal) > maxLen {
+			return serverVal[:maxLen] + "…"
+		}
+		return serverVal
 	}
 	return ""
 }
