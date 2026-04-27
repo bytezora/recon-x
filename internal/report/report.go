@@ -22,8 +22,12 @@ import (
 "github.com/bytezora/recon-x/internal/asn"
 "github.com/bytezora/recon-x/internal/bypass"
 "github.com/bytezora/recon-x/internal/cors"
+"github.com/bytezora/recon-x/internal/adminpanel"
+"github.com/bytezora/recon-x/internal/defaultcreds"
 "github.com/bytezora/recon-x/internal/emailsec"
 "github.com/bytezora/recon-x/internal/favicon"
+"github.com/bytezora/recon-x/internal/ratelimit"
+"github.com/bytezora/recon-x/internal/sqli"
 "github.com/bytezora/recon-x/internal/graphql"
 "github.com/bytezora/recon-x/internal/takeover"
 "github.com/bytezora/recon-x/internal/vhost"
@@ -53,7 +57,11 @@ VHosts    []vhost.Result
 Favicons  []favicon.Result
 ASN       []asn.Result
 GraphQL   []graphql.Result
-EmailSec  *emailsec.Result
+EmailSec     *emailsec.Result
+AdminPanel   []adminpanel.Result
+SQLi         []sqli.Result
+DefaultCreds []defaultcreds.Result
+RateLimit    []ratelimit.Result
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -296,6 +304,22 @@ footer{
   <div class="card" onclick="show('emailsec',this)">
     <div class="num">{{if .EmailSec}}1{{else}}0{{end}}</div>
     <div class="label">email sec</div>
+  </div>
+  <div class="card" onclick="show('adminpanel',this)">
+    <div class="num">{{len .AdminPanel}}</div>
+    <div class="label">admin panels</div>
+  </div>
+  <div class="card" onclick="show('sqli',this)">
+    <div class="num">{{len .SQLi}}</div>
+    <div class="label">sqli</div>
+  </div>
+  <div class="card" onclick="show('defaultcreds',this)">
+    <div class="num">{{len .DefaultCreds}}</div>
+    <div class="label">def creds</div>
+  </div>
+  <div class="card" onclick="show('ratelimit',this)">
+    <div class="num">{{len .RateLimit}}</div>
+    <div class="label">rate limit</div>
   </div>
 </div>
 
@@ -774,9 +798,98 @@ footer{
     {{else}}<p class="empty">[ email security check failed ]</p>{{end}}
   </div>
 
+  <div id="tab-adminpanel" class="tab-content">
+    <h2>Admin Panel Discovery</h2>
+    {{if .AdminPanel}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Path</th><th>Status</th><th>Title</th></tr></thead>
+      <tbody>
+      {{range $i,$a := .AdminPanel}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$a.URL}}</td>
+        <td style="color:var(--hi)">{{$a.Path}}</td>
+        <td>
+          {{if eq $a.StatusCode 200}}<span class="tag tag-hi">{{$a.StatusCode}}</span>
+          {{else if eq $a.StatusCode 403}}<span class="tag tag-alert">{{$a.StatusCode}}</span>
+          {{else if eq $a.StatusCode 401}}<span class="tag tag-alert">{{$a.StatusCode}}</span>
+          {{else}}<span class="tag tag-warn">{{$a.StatusCode}}</span>{{end}}
+        </td>
+        <td class="mono">{{$a.Title}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no admin panels found ]</p>{{end}}
+  </div>
+
+  <div id="tab-sqli" class="tab-content">
+    <h2>SQLi Detection</h2>
+    {{if .SQLi}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Param</th><th>Payload</th><th>Evidence</th></tr></thead>
+      <tbody>
+      {{range $i,$s := .SQLi}}
+      {{if $s.Detected}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$s.URL}}</td>
+        <td><span class="tag tag-alert">{{$s.Param}}</span></td>
+        <td class="mono">{{$s.Payload}}</td>
+        <td class="mono" style="color:var(--alert)">{{$s.Evidence}}</td>
+      </tr>
+      {{end}}
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no SQLi indicators found ]</p>{{end}}
+  </div>
+
+  <div id="tab-defaultcreds" class="tab-content">
+    <h2>Default Credentials</h2>
+    {{if .DefaultCreds}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Username</th><th>Password</th><th>Status</th><th>Found</th></tr></thead>
+      <tbody>
+      {{range $i,$c := .DefaultCreds}}
+      {{if $c.Found}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$c.URL}}</td>
+        <td><span class="tag tag-alert">{{$c.Username}}</span></td>
+        <td><span class="tag tag-alert">{{$c.Password}}</span></td>
+        <td class="mono">{{$c.StatusCode}}</td>
+        <td><span class="tag tag-alert">YES</span></td>
+      </tr>
+      {{end}}
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no default credentials found ]</p>{{end}}
+  </div>
+
+  <div id="tab-ratelimit" class="tab-content">
+    <h2>Rate Limit Headers</h2>
+    {{if .RateLimit}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Header</th><th>Value</th></tr></thead>
+      <tbody>
+      {{range $i,$r := .RateLimit}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$r.URL}}</td>
+        <td><span class="tag tag-hi">{{$r.Header}}</span></td>
+        <td class="mono">{{$r.Value}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no rate limit headers detected ]</p>{{end}}
+  </div>
+
 </div>
 
-<footer>recon-x v1.4.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
+<footer>recon-x v1.5.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
 
 <script>
 function show(tab, card) {
@@ -813,6 +926,10 @@ favicons []favicon.Result,
 asnR    []asn.Result,
 gqlR    []graphql.Result,
 emailR  *emailsec.Result,
+adminPanel   []adminpanel.Result,
+sqliRes      []sqli.Result,
+defaultCreds []defaultcreds.Result,
+rateLimit    []ratelimit.Result,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -846,6 +963,10 @@ VHosts:    vhosts,
 Favicons:  favicons,
 ASN:       asnR,
 GraphQL:   gqlR,
-EmailSec:  emailR,
+EmailSec:    emailR,
+AdminPanel:   adminPanel,
+SQLi:         sqliRes,
+DefaultCreds: defaultCreds,
+RateLimit:    rateLimit,
 })
 }

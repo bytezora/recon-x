@@ -22,9 +22,13 @@ import (
 	"github.com/bytezora/recon-x/internal/asn"
 	"github.com/bytezora/recon-x/internal/bypass"
 	"github.com/bytezora/recon-x/internal/cors"
+	"github.com/bytezora/recon-x/internal/adminpanel"
+	"github.com/bytezora/recon-x/internal/defaultcreds"
 	"github.com/bytezora/recon-x/internal/emailsec"
 	"github.com/bytezora/recon-x/internal/favicon"
 	"github.com/bytezora/recon-x/internal/graphql"
+	"github.com/bytezora/recon-x/internal/ratelimit"
+	"github.com/bytezora/recon-x/internal/sqli"
 	"github.com/bytezora/recon-x/internal/takeover"
 	"github.com/bytezora/recon-x/internal/vhost"
 )
@@ -53,7 +57,11 @@ type Report struct {
 	Favicons  []favicon.Result   `json:"favicons"`
 	ASN       []asn.Result       `json:"asn"`
 	GraphQL   []graphql.Result   `json:"graphql"`
-	EmailSec  *emailsec.Result   `json:"email_security,omitempty"`
+	EmailSec    *emailsec.Result      `json:"email_security,omitempty"`
+	AdminPanel   []adminpanel.Result   `json:"admin_panel,omitempty"`
+	SQLi         []sqli.Result         `json:"sqli,omitempty"`
+	DefaultCreds []defaultcreds.Result `json:"default_creds,omitempty"`
+	RateLimit    []ratelimit.Result    `json:"rate_limit,omitempty"`
 }
 
 func WriteJSON(
@@ -80,6 +88,10 @@ func WriteJSON(
 	asnR     []asn.Result,
 	gqlR     []graphql.Result,
 	emailR   *emailsec.Result,
+	adminPanel   []adminpanel.Result,
+	sqliRes      []sqli.Result,
+	defaultCreds []defaultcreds.Result,
+	rateLimit    []ratelimit.Result,
 ) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -113,6 +125,10 @@ func WriteJSON(
 		Favicons:  favicons,
 		ASN:       asnR,
 		GraphQL:   gqlR,
-		EmailSec:  emailR,
+		EmailSec:    emailR,
+		AdminPanel:   adminPanel,
+		SQLi:         sqliRes,
+		DefaultCreds: defaultCreds,
+		RateLimit:    rateLimit,
 	})
 }

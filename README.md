@@ -1,7 +1,7 @@
 # recon-x
 
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.4.0-39ff14?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-39ff14?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
 
 Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, and HTTP screenshots. Outputs a self-contained HTML report and optional JSON.
@@ -70,6 +70,10 @@ recon-x -target example.com -github-token ghp_xxxx
 19. ASN lookup → BGP prefix, org, country
 20. GraphQL probe → endpoint discovery, introspection dump
 21. Email security → SPF / DMARC / DKIM, spoofability
+22. Admin panel discovery → 50+ real paths, records 200/301/302/401/403
+23. SQLi detection → reflection + error-based, zero exploitation
+24. Default credentials → 15 common pairs, login form detection
+25. Rate limit headers → X-RateLimit-*, Retry-After detection
     → self-contained HTML report + optional JSON
 ```
 
@@ -83,7 +87,7 @@ recon-x -target example.com -github-token ghp_xxxx
 
 ## Report
 
-Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots, takeover, CORS, 403 bypass, vhosts, favicon, ASN, GraphQL, email security.
+Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots, takeover, CORS, 403 bypass, vhosts, favicon, ASN, GraphQL, email security, admin panels, sqli, default creds, rate limit.
 
 ![Report](assets/report.png)
 

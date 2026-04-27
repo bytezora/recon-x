@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/bytezora/recon-x/internal/adminpanel"
 	"github.com/bytezora/recon-x/internal/axfr"
 	"github.com/bytezora/recon-x/internal/buckets"
 	"github.com/bytezora/recon-x/internal/crtsh"
@@ -21,8 +22,10 @@ import (
 	"github.com/bytezora/recon-x/internal/openredirect"
 	"github.com/bytezora/recon-x/internal/output"
 	"github.com/bytezora/recon-x/internal/portscan"
+	"github.com/bytezora/recon-x/internal/ratelimit"
 	"github.com/bytezora/recon-x/internal/report"
 	"github.com/bytezora/recon-x/internal/screenshot"
+	"github.com/bytezora/recon-x/internal/sqli"
 	"github.com/bytezora/recon-x/internal/subdomain"
 	"github.com/bytezora/recon-x/internal/tlscheck"
 	"github.com/bytezora/recon-x/internal/vulns"
@@ -31,6 +34,7 @@ import (
 	"github.com/bytezora/recon-x/internal/asn"
 	"github.com/bytezora/recon-x/internal/bypass"
 	"github.com/bytezora/recon-x/internal/cors"
+	"github.com/bytezora/recon-x/internal/defaultcreds"
 	"github.com/bytezora/recon-x/internal/emailsec"
 	"github.com/bytezora/recon-x/internal/favicon"
 	"github.com/bytezora/recon-x/internal/graphql"
@@ -40,7 +44,7 @@ import (
 )
 
 const (
-	version      = "1.4.0"
+	version      = "1.5.0"
 	defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 )
 
@@ -107,6 +111,10 @@ func main() {
 		finalASN       []asn.Result
 		finalGraphQL   []graphql.Result
 		finalEmailSec  *emailsec.Result
+		finalAdminPanel  []adminpanel.Result
+		finalSQLi        []sqli.Result
+		finalDefaultCreds []defaultcreds.Result
+		finalRateLimit   []ratelimit.Result
 	)
 
 	go func() {
@@ -117,6 +125,7 @@ func main() {
 			&finalTLS, &finalRedirects, &finalAXFR, &finalWHOIS, &finalShots,
 			&finalTakeover, &finalCORS, &finalBypass, &finalVHosts,
 			&finalFavicons, &finalASN, &finalGraphQL, &finalEmailSec,
+			&finalAdminPanel, &finalSQLi, &finalDefaultCreds, &finalRateLimit,
 		)
 		prog.Send(ui.DoneMsg{})
 	}()
@@ -130,7 +139,8 @@ func main() {
 		finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
 		finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
 		finalTakeover, finalCORS, finalBypass, finalVHosts,
-		finalFavicons, finalASN, finalGraphQL, finalEmailSec, cfg.Output); err != nil {
+		finalFavicons, finalASN, finalGraphQL, finalEmailSec,
+		finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit, cfg.Output); err != nil {
 		fail("report error: %v", err)
 		os.Exit(1)
 	}
@@ -141,7 +151,8 @@ func main() {
 			finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
 			finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
 			finalTakeover, finalCORS, finalBypass, finalVHosts,
-			finalFavicons, finalASN, finalGraphQL, finalEmailSec); err != nil {
+			finalFavicons, finalASN, finalGraphQL, finalEmailSec,
+			finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit); err != nil {
 			fail("JSON error: %v", err)
 		} else {
 			success("JSON output → %s", styleYellow.Render(cfg.JSON))
@@ -178,6 +189,10 @@ func runScans(
 	asnR     *[]asn.Result,
 	gqlR     *[]graphql.Result,
 	emailR   **emailsec.Result,
+	adminR    *[]adminpanel.Result,
+	sqliR     *[]sqli.Result,
+	credsR    *[]defaultcreds.Result,
+	rateLimR  *[]ratelimit.Result,
 ) {
 	prog.Send(ui.StepStartMsg(0))
 	var passiveNames []string
@@ -518,6 +533,60 @@ func runScans(
 		}
 		return 0
 	}()})
+
+	prog.Send(ui.StepStartMsg(21))
+	*adminR = adminpanel.Discover(*http, cfg.Threads, func(r adminpanel.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("🔍"),
+			Text: styleMuted.Render(r.URL) + styleYellow.Render(r.Path),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 21, Count: len(*adminR)})
+
+	prog.Send(ui.StepStartMsg(22))
+	httpURLs := make([]string, 0, len(*http))
+	for _, h := range *http {
+		httpURLs = append(httpURLs, h.URL)
+	}
+	*sqliR = sqli.Detect(httpURLs, cfg.Threads, func(r sqli.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("⚡"),
+			Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Param),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 22, Count: len(*sqliR)})
+
+	prog.Send(ui.StepStartMsg(23))
+	loginURLs := make([]string, 0)
+	for _, a := range *adminR {
+		if a.StatusCode == 200 || a.StatusCode == 302 {
+			loginURLs = append(loginURLs, a.URL+a.Path)
+		}
+	}
+	if len(loginURLs) == 0 {
+		for _, h := range *http {
+			loginURLs = append(loginURLs, h.URL+"/login")
+		}
+	}
+	*credsR = defaultcreds.Check(loginURLs, func(r defaultcreds.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("🔑"),
+			Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Username+":"+r.Password),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 23, Count: func() int {
+		c := 0
+		for _, r := range *credsR {
+			if r.Found {
+				c++
+			}
+		}
+		return c
+	}()})
+
+	prog.Send(ui.StepStartMsg(24))
+	*rateLimR = ratelimit.Detect(*http)
+	prog.Send(ui.StepDoneMsg{Step: 24, Count: len(*rateLimR)})
 }
 
 func parseFlags() Config {
