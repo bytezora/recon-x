@@ -523,7 +523,7 @@ footer{
         <td class="mono">{{$t.Host}}</td>
         <td class="mono">{{$t.Port}}</td>
         <td><span class="tag {{if or (eq $t.Proto "TLS 1.0") (eq $t.Proto "TLS 1.1")}}tag-alert{{else}}tag-hi{{end}}">{{$t.Proto}}</span></td>
-        <td class="mono">{{$t.Cipher}}</td>
+        <td class="mono">{{$t.CipherSuite}}</td>
         <td class="mono">{{$t.Expiry}}</td>
         <td>{{range $t.Issues}}<span class="tag tag-alert">{{.}}</span> {{end}}</td>
       </tr>
@@ -537,16 +537,15 @@ footer{
     <h2>Open Redirect Detector</h2>
     {{if .Redirects}}
     <table>
-      <thead><tr><th>#</th><th>Base URL</th><th>Param</th><th>Payload</th><th>Location</th><th>Status</th></tr></thead>
+      <thead><tr><th>#</th><th>Base URL</th><th>Param</th><th>Location</th><th>Confirmed</th></tr></thead>
       <tbody>
       {{range $i,$r := .Redirects}}
       <tr>
         <td class="mono">{{$i}}</td>
         <td class="mono">{{$r.BaseURL}}</td>
         <td><span class="tag tag-alert">{{$r.Param}}</span></td>
-        <td class="mono">{{$r.Payload}}</td>
         <td class="mono">{{$r.Location}}</td>
-        <td class="mono">{{$r.StatusCode}}</td>
+        <td>{{if $r.Confirmed}}<span class="tag tag-alert">YES</span>{{else}}<span class="tag">NO</span>{{end}}</td>
       </tr>
       {{end}}
       </tbody>
@@ -592,7 +591,7 @@ footer{
         <tr><td class="mono" style="color:var(--dim)">Created</td><td class="mono">{{.WHOIS.Created}}</td></tr>
         <tr><td class="mono" style="color:var(--dim)">Updated</td><td class="mono">{{.WHOIS.Updated}}</td></tr>
         <tr><td class="mono" style="color:var(--dim)">Expires</td><td class="mono">{{.WHOIS.Expires}}</td></tr>
-        <tr><td class="mono" style="color:var(--dim)">Nameservers</td><td class="mono">{{range .WHOIS.Nameservers}}{{.}} {{end}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Nameservers</td><td class="mono">{{range .WHOIS.NameSrvs}}{{.}} {{end}}</td></tr>
       </tbody>
     </table>
     {{else}}<p class="empty">[ WHOIS lookup failed or no data ]</p>{{end}}
