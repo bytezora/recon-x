@@ -1,8 +1,10 @@
 package report
 
 import (
+"fmt"
 "html/template"
 "os"
+"strings"
 "time"
 
 "github.com/bytezora/recon-x/internal/axfr"
@@ -30,6 +32,7 @@ import (
 "github.com/bytezora/recon-x/internal/sqli"
 "github.com/bytezora/recon-x/internal/graphql"
 "github.com/bytezora/recon-x/internal/takeover"
+"github.com/bytezora/recon-x/internal/finding"
 "github.com/bytezora/recon-x/internal/templates"
 "github.com/bytezora/recon-x/internal/vhost"
 )
@@ -64,6 +67,7 @@ SQLi         []sqli.Result
 DefaultCreds []defaultcreds.Result
 RateLimit    []ratelimit.Result
 Templates    []templates.Match
+Findings     []finding.Finding
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -237,6 +241,29 @@ a:hover{text-decoration:underline}
 .cvss-med{color:#888}
 .cvss-low{color:var(--dim)}
 
+.findings-grid{display:flex;flex-direction:column;gap:12px}
+.finding-card{border:1px solid #333;border-radius:8px;padding:16px;background:#111}
+.finding-card.sev-critical{border-left:4px solid #ff2244}
+.finding-card.sev-high{border-left:4px solid #ff6600}
+.finding-card.sev-medium{border-left:4px solid #ffcc00}
+.finding-card.sev-low{border-left:4px solid #44aaff}
+.finding-header{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.finding-title{font-size:1rem;font-weight:600;margin-bottom:10px;color:#f0f0f0}
+.badge{font-size:0.7rem;padding:2px 8px;border-radius:4px;font-weight:700;text-transform:uppercase}
+.sev-badge{background:#333;color:#fff}
+.finding-card.sev-critical .sev-badge{background:#ff2244;color:#fff}
+.finding-card.sev-high .sev-badge{background:#ff6600;color:#fff}
+.finding-card.sev-medium .sev-badge{background:#ffcc00;color:#000}
+.finding-card.sev-low .sev-badge{background:#44aaff;color:#000}
+.conf-badge{background:#1a3a1a;color:#44ff88}
+.manual-badge{background:#3a2a00;color:#ffaa00}
+.finding-type{font-size:0.75rem;color:#888;margin-left:auto}
+.finding-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.finding-table tr{border-bottom:1px solid #222}
+.fk{color:#888;padding:4px 8px 4px 0;white-space:nowrap;vertical-align:top;width:80px}
+.fv{color:#ccc;padding:4px 0}
+.fv code{background:#1a1a1a;padding:2px 6px;border-radius:3px;font-family:monospace;color:#00ff88;word-break:break-all}
+
 </style>
 </head>
 <body>
@@ -366,6 +393,10 @@ a:hover{text-decoration:underline}
   <div class="card" onclick="show('ratelimit',this)">
     <div class="num">{{len .RateLimit}}</div>
     <div class="label">rate limit</div>
+  </div>
+  <div class="card" onclick="show('findings',this)">
+    <div class="num">{{len .Findings}}</div>
+    <div class="label">findings</div>
   </div>
 </div>
 
@@ -961,6 +992,34 @@ a:hover{text-decoration:underline}
     {{else}}<p class="empty">[ no template matches ]</p>{{end}}
   </div>
 
+  <div id="tab-findings" class="tab-content">
+{{if .Findings}}
+<section id="findings">
+<h2>Security Findings</h2>
+<div class="findings-grid">
+{{range .Findings}}
+<div class="finding-card sev-{{.Severity}} conf-{{.Confidence}}">
+  <div class="finding-header">
+    <span class="badge sev-badge">{{upper .Severity}}</span>
+    <span class="badge conf-badge">{{.Confidence}}</span>
+    {{if .ManualVerification}}<span class="badge manual-badge">verify manually</span>{{end}}
+    <span class="finding-type">{{.Type}}</span>
+  </div>
+  <div class="finding-title">{{.Title}}</div>
+  <table class="finding-table">
+    <tr><td class="fk">Affected</td><td class="fv">{{.AffectedURL}}</td></tr>
+    <tr><td class="fk">Evidence</td><td class="fv"><code>{{.Evidence}}</code></td></tr>
+    <tr><td class="fk">Reason</td><td class="fv">{{.Reason}}</td></tr>
+    {{if .Remediation}}<tr><td class="fk">Fix</td><td class="fv">{{.Remediation}}</td></tr>{{end}}
+    {{if .CVE}}<tr><td class="fk">CVE</td><td class="fv"><a href="{{index .References 0}}" target="_blank">{{.CVE}}</a> (CVSS {{.CVSS}})</td></tr>{{end}}
+  </table>
+</div>
+{{end}}
+</div>
+</section>
+{{else}}<p class="empty">[ no structured findings ]</p>{{end}}
+  </div>
+
 </div>
 
 <footer>recon-x &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only &nbsp;&middot;&nbsp; findings require manual verification</footer>
@@ -1033,6 +1092,7 @@ sqliRes      []sqli.Result,
 defaultCreds []defaultcreds.Result,
 rateLimit    []ratelimit.Result,
 tplMatches   []templates.Match,
+findings     []finding.Finding,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -1041,7 +1101,13 @@ return err
 }
 defer f.Close()
 
-t := template.Must(template.New("report").Parse(tmpl))
+t := template.Must(template.New("r").Funcs(template.FuncMap{
+	"upper": func(v interface{}) string { return strings.ToUpper(fmt.Sprintf("%s", v)) },
+	"index": func(s []string, i int) string {
+		if len(s) > i { return s[i] }
+		return ""
+	},
+}).Parse(tmpl))
 return t.Execute(f, Data{
 Target:      target,
 GeneratedAt: time.Now().Format("2006-01-02 15:04:05"),
@@ -1072,5 +1138,6 @@ SQLi:         sqliRes,
 DefaultCreds: defaultCreds,
 RateLimit:    rateLimit,
 Templates:    tplMatches,
+Findings:     findings,
 })
 }

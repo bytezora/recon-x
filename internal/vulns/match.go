@@ -1,11 +1,14 @@
 package vulns
 
 import (
+	"fmt"
 	"net/http"
 	"net/textproto"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/bytezora/recon-x/internal/finding"
 )
 
 type Match struct {
@@ -614,4 +617,47 @@ func CheckHTTPFull(host string, port int, h http.Header, body string) []Match {
 
 func CheckHTTP(host string, port int, h http.Header) []Match {
 	return CheckHTTPFull(host, port, h, "")
+}
+
+func (m Match) ToFinding() finding.Finding {
+conf := finding.Possible
+manualVerify := true
+switch m.Confidence {
+case "confirmed":
+conf = finding.Confirmed
+manualVerify = false
+case "high":
+conf = finding.Likely
+manualVerify = true
+}
+
+sev := finding.Medium
+switch m.Severity {
+case "critical":
+sev = finding.Critical
+case "high":
+sev = finding.High
+case "low":
+sev = finding.Low
+}
+
+reason := "Banner/header version matches known vulnerable version range for " + m.CVE
+if m.Confidence == "confirmed" {
+reason = "Active exploit check confirmed vulnerability: " + m.CVE
+}
+
+return finding.Finding{
+Type:               "cve",
+Severity:           sev,
+Confidence:         conf,
+Title:              m.CVE + ": " + m.Description,
+AffectedURL:        fmt.Sprintf("%s:%d", m.Host, m.Port),
+Evidence:           m.Banner,
+Reason:             reason,
+Remediation:        "Apply vendor patch. See advisory: " + m.Link,
+ManualVerification: manualVerify,
+CVE:                m.CVE,
+CVSS:               m.CVSS,
+References:         []string{m.Link},
+}
 }

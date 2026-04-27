@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
@@ -100,4 +101,18 @@ func checkOne(client *http.Client, sub string) Result {
 		}
 	}
 	return r
+}
+
+func (r Result) ToFinding() finding.Finding {
+return finding.Finding{
+Type:               "takeover",
+Severity:           finding.High,
+Confidence:         finding.Likely,
+Title:              "Subdomain Takeover — " + r.Subdomain,
+AffectedURL:        r.Subdomain,
+Evidence:           "CNAME " + r.CNAME + " resolves to unclaimed " + r.Service + " resource",
+Reason:             "CNAME record points to a deleted or unclaimed resource on " + r.Service + " — attacker can register it",
+Remediation:        "Remove the dangling CNAME record or reclaim the resource on " + r.Service,
+ManualVerification: true,
+}
 }

@@ -5,10 +5,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
@@ -140,4 +142,18 @@ func tryBasicAuth(client *http.Client, loginURL, username, password string) *Res
 		}
 	}
 	return nil
+}
+
+func (r Result) ToFinding() finding.Finding {
+return finding.Finding{
+Type:               "default-creds",
+Severity:           finding.Critical,
+Confidence:         finding.Confirmed,
+Title:              "Default Credentials Accepted: " + r.Username + ":" + r.Password,
+AffectedURL:        r.URL,
+Evidence:           "HTTP " + strconv.Itoa(r.StatusCode) + " — login accepted with " + r.Username + ":" + r.Password,
+Reason:             "Login endpoint accepted a default or well-known credential pair — authentication is trivially bypassed",
+Remediation:        "Change default credentials immediately. Enforce strong password policy. Consider MFA.",
+ManualVerification: false,
+}
 }

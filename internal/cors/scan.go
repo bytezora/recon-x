@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
@@ -95,4 +96,34 @@ func evilPrefix(target string) string {
 	parts := strings.SplitN(target, "/", 2)
 	host := parts[0]
 	return "https://evil" + host
+}
+
+func (r Result) ToFinding() finding.Finding {
+evidence := "Access-Control-Allow-Origin: " + r.ACAO
+if r.ACAC == "true" {
+evidence += " | Access-Control-Allow-Credentials: true"
+}
+reason := "Server reflects arbitrary Origin header in ACAO response"
+if r.ACAC == "true" {
+reason = "Server reflects arbitrary Origin AND sends ACAC: true — allows cross-origin requests with credentials (cookies, auth headers)"
+}
+
+sev := finding.Medium
+conf := finding.Likely
+if r.ACAC == "true" {
+sev = finding.High
+conf = finding.Confirmed
+}
+
+return finding.Finding{
+Type:               "cors",
+Severity:           sev,
+Confidence:         conf,
+Title:              "CORS Misconfiguration — " + r.URL,
+AffectedURL:        r.URL,
+Evidence:           evidence,
+Reason:             reason,
+Remediation:        "Whitelist only trusted origins. Never reflect arbitrary Origin header. Set ACAC: true only with explicit safe origin whitelist.",
+ManualVerification: r.ACAC != "true",
+}
 }

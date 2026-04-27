@@ -107,7 +107,7 @@ res.Vulns, res.WAFs, res.Dirs, res.JS, res.GH, res.Buckets,
 res.TLS, res.Redirects, res.AXFR, res.WHOIS, res.Screenshots,
 res.Takeover, res.CORS, res.Bypass, res.VHosts,
 res.Favicons, res.ASN, res.GraphQL, res.EmailSec,
-res.AdminPanel, res.SQLi, res.DefaultCreds, res.RateLimit, res.Templates, cfg.Output); err != nil {
+res.AdminPanel, res.SQLi, res.DefaultCreds, res.RateLimit, res.Templates, res.Findings, cfg.Output); err != nil {
 fail("report error: %v", err)
 os.Exit(1)
 }

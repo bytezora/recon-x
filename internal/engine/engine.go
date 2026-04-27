@@ -19,6 +19,7 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/dirbust"
 "github.com/bytezora/recon-x/internal/emailsec"
 "github.com/bytezora/recon-x/internal/favicon"
+"github.com/bytezora/recon-x/internal/finding"
 "github.com/bytezora/recon-x/internal/ghsearch"
 "github.com/bytezora/recon-x/internal/graphql"
 "github.com/bytezora/recon-x/internal/httpcheck"
@@ -106,6 +107,7 @@ SQLi         []sqli.Result
 DefaultCreds []defaultcreds.Result
 RateLimit    []ratelimit.Result
 Templates    []templates.Match
+Findings     []finding.Finding
 PassiveNames []string
 }
 
@@ -550,6 +552,7 @@ send(ui.StepDoneMsg{Step: i, Count: stepCount(i, res)})
 if e.cfg.NotifyTelegram != "" || e.cfg.NotifySlack != "" {
 sendNotifications(e, res)
 }
+res.Findings = buildFindings(res)
 return res
 }
 
@@ -712,4 +715,32 @@ return styleRed.Render(s)
 default:
 return styleYellow.Render(s)
 }
+}
+
+func buildFindings(res *Results) []finding.Finding {
+var out []finding.Finding
+for _, v := range res.Vulns {
+out = append(out, v.ToFinding())
+}
+for _, s := range res.SQLi {
+if s.Detected {
+out = append(out, s.ToFinding())
+}
+}
+for _, c := range res.CORS {
+if c.Vulnerable {
+out = append(out, c.ToFinding())
+}
+}
+for _, t := range res.Takeover {
+if t.Vulnerable {
+out = append(out, t.ToFinding())
+}
+}
+for _, d := range res.DefaultCreds {
+if d.Found {
+out = append(out, d.ToFinding())
+}
+}
+return out
 }
