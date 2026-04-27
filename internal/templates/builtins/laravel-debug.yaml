@@ -1,0 +1,10 @@
+id: laravel-debug
+name: Laravel Debug Mode Enabled
+severity: high
+tags: [exposure, laravel]
+request:
+  method: GET
+  path: /
+matchers:
+  - type: word
+    words: ["Whoops! There was an error.", "laravel", "illuminate/"]

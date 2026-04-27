@@ -1,20 +1,20 @@
 package buckets
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
-// Result represents a discovered or existing cloud storage bucket.
 type Result struct {
 	Bucket   string `json:"bucket"`
 	Provider string `json:"provider"`
 	URL      string `json:"url"`
-	Status   string `json:"status"` // "public" or "exists"
+	Status   string `json:"status"`
 	Code     int    `json:"code"`
 }
 
@@ -24,17 +24,6 @@ var suffixes = []string{
 	"-data", "-logs", "-files", "-public", "-archive",
 	"-uploads", "-images", "-test", "-web", "-app", "-api",
 	"-config", "-deploy", "-release", "-build",
-}
-
-var httpClient = &http.Client{
-	Timeout: 6 * time.Second,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		Proxy:           http.ProxyFromEnvironment,
-	},
-	CheckRedirect: func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
 }
 
 func classify(code int) string {
@@ -48,9 +37,9 @@ func classify(code int) string {
 	}
 }
 
-func probe(name, provider, urlFmt string) *Result {
+func probe(client *http.Client, name, provider, urlFmt string) *Result {
 	u := fmt.Sprintf(urlFmt, name)
-	resp, err := httpClient.Head(u)
+	resp, err := client.Head(u)
 	if err != nil {
 		return nil
 	}
@@ -62,8 +51,8 @@ func probe(name, provider, urlFmt string) *Result {
 	return &Result{Bucket: name, Provider: provider, URL: u, Status: s, Code: resp.StatusCode}
 }
 
-// Enum checks common bucket name variants for target across AWS S3, GCS, and Azure Blob.
 func Enum(target string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, false)
 	base := strings.ToLower(strings.SplitN(target, ".", 2)[0])
 
 	names := make([]string, 0, len(suffixes))
@@ -87,16 +76,16 @@ func Enum(target string, threads int, onFound func(Result)) []Result {
 	}
 
 	var results []Result
-	mu  := sync.Mutex{}
+	mu := sync.Mutex{}
 	sem := make(chan struct{}, threads)
-	wg  := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for _, j := range jobs {
 		sem <- struct{}{}
 		wg.Add(1)
 		go func(j job) {
 			defer func() { <-sem; wg.Done() }()
-			r := probe(j.name, j.provider, j.urlFmt)
+			r := probe(client, j.name, j.provider, j.urlFmt)
 			if r == nil {
 				return
 			}

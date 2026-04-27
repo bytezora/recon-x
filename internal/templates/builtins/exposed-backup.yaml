@@ -1,0 +1,10 @@
+id: exposed-backup
+name: Exposed Backup File
+severity: high
+tags: [exposure, backup]
+request:
+  method: GET
+  path: /backup.zip
+matchers:
+  - type: status
+    status: [200]

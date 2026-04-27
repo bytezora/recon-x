@@ -30,6 +30,7 @@ import (
 "github.com/bytezora/recon-x/internal/sqli"
 "github.com/bytezora/recon-x/internal/graphql"
 "github.com/bytezora/recon-x/internal/takeover"
+"github.com/bytezora/recon-x/internal/templates"
 "github.com/bytezora/recon-x/internal/vhost"
 )
 
@@ -62,6 +63,7 @@ AdminPanel   []adminpanel.Result
 SQLi         []sqli.Result
 DefaultCreds []defaultcreds.Result
 RateLimit    []ratelimit.Result
+Templates    []templates.Match
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -887,9 +889,30 @@ footer{
     {{else}}<p class="empty">[ no rate limit headers detected ]</p>{{end}}
   </div>
 
+  <div id="tab-templates" class="tab-content">
+    <h2>Template Matches</h2>
+    {{if .Templates}}
+    <table>
+      <thead><tr><th>#</th><th>ID</th><th>Name</th><th>Severity</th><th>URL</th><th>Matched</th></tr></thead>
+      <tbody>
+      {{range $i,$m := .Templates}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$m.TemplateID}}</td>
+        <td>{{$m.Name}}</td>
+        <td><span class="tag tag-hi">{{$m.Severity}}</span></td>
+        <td class="mono">{{$m.URL}}</td>
+        <td class="mono">{{$m.Matched}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no template matches ]</p>{{end}}
+  </div>
+
 </div>
 
-<footer>recon-x v1.5.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
+<footer>recon-x v2.0.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
 
 <script>
 function show(tab, card) {
@@ -930,6 +953,7 @@ adminPanel   []adminpanel.Result,
 sqliRes      []sqli.Result,
 defaultCreds []defaultcreds.Result,
 rateLimit    []ratelimit.Result,
+tplMatches   []templates.Match,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -968,5 +992,6 @@ AdminPanel:   adminPanel,
 SQLi:         sqliRes,
 DefaultCreds: defaultCreds,
 RateLimit:    rateLimit,
+Templates:    tplMatches,
 })
 }

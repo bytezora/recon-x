@@ -1,0 +1,10 @@
+id: exposed-env
+name: Exposed .env File
+severity: high
+tags: [exposure, config]
+request:
+  method: GET
+  path: /.env
+matchers:
+  - type: word
+    words: [APP_KEY, DB_PASSWORD, SECRET_KEY, AWS_SECRET]

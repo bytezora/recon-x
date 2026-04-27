@@ -1,7 +1,6 @@
 package defaultcreds
 
 import (
-	"crypto/tls"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {
@@ -27,19 +28,7 @@ var credPairs = [][2]string{
 }
 
 func Check(loginURLs []string, onFound func(Result)) []Result {
-	client := &http.Client{
-		Timeout: 8 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 3 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
-	}
+	client := httpclient.New(15*time.Second, false)
 
 	var (
 		mu      sync.Mutex

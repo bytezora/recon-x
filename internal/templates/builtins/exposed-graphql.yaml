@@ -1,0 +1,13 @@
+id: exposed-graphql
+name: GraphQL Introspection Enabled
+severity: medium
+tags: [exposure, api, graphql]
+request:
+  method: POST
+  path: /graphql
+  headers:
+    Content-Type: application/json
+  body: '{"query":"{__schema{types{name}}}"}'
+matchers:
+  - type: word
+    words: ['"__schema"', '"types"']

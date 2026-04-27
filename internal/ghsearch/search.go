@@ -1,16 +1,16 @@
 package ghsearch
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
-// Finding represents a GitHub code search result.
 type Finding struct {
 	Repo    string `json:"repo"`
 	Path    string `json:"path"`
@@ -35,8 +35,6 @@ type ghResponse struct {
 	Items []ghItem `json:"items"`
 }
 
-// Search queries GitHub code search for secrets related to the target domain.
-// token is optional; without it the rate limit is 10 req/min (enforced via sleep).
 func Search(target, token string, onFound func(Finding)) []Finding {
 	base := strings.SplitN(target, ".", 2)[0]
 	queries := []string{
@@ -44,13 +42,7 @@ func Search(target, token string, onFound func(Finding)) []Finding {
 		fmt.Sprintf("%q", target),
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
+	client := httpclient.New(15*time.Second, true)
 	var all []Finding
 	seen := make(map[string]bool)
 
@@ -79,7 +71,7 @@ func Search(target, token string, onFound func(Finding)) []Finding {
 			}
 
 			var result ghResponse
-			json.NewDecoder(resp.Body).Decode(&result) //nolint:errcheck
+			json.NewDecoder(resp.Body).Decode(&result)
 			resp.Body.Close()
 
 			for _, item := range result.Items {

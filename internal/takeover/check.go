@@ -1,13 +1,14 @@
 package takeover
 
 import (
-	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {
@@ -36,15 +37,8 @@ var fingerprints = map[string]string{
 	"pantheon.io":             "The site you were looking for couldn't be found",
 }
 
-var client = &http.Client{
-	Timeout: 8 * time.Second,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyFromEnvironment,
-	},
-}
-
 func Check(subdomains []string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, true)
 	var (
 		mu      sync.Mutex
 		results []Result
@@ -57,7 +51,7 @@ func Check(subdomains []string, threads int, onFound func(Result)) []Result {
 		go func(sub string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			r := checkOne(sub)
+			r := checkOne(client, sub)
 			mu.Lock()
 			results = append(results, r)
 			mu.Unlock()
@@ -70,7 +64,7 @@ func Check(subdomains []string, threads int, onFound func(Result)) []Result {
 	return results
 }
 
-func checkOne(sub string) Result {
+func checkOne(client *http.Client, sub string) Result {
 	r := Result{Subdomain: sub}
 	cname, err := net.LookupCNAME(sub)
 	if err != nil {

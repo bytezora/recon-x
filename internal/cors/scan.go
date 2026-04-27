@@ -1,11 +1,12 @@
 package cors
 
 import (
-	"crypto/tls"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {
@@ -16,21 +17,8 @@ type Result struct {
 	Vulnerable bool   `json:"vulnerable"`
 }
 
-var client = &http.Client{
-	Timeout: 8 * time.Second,
-	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 1 {
-			return http.ErrUseLastResponse
-		}
-		return nil
-	},
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyFromEnvironment,
-	},
-}
-
 func Scan(targets []string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, false)
 	var (
 		mu      sync.Mutex
 		results []Result
@@ -43,7 +31,7 @@ func Scan(targets []string, threads int, onFound func(Result)) []Result {
 		go func(target string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			for _, r := range scanTarget(target) {
+			for _, r := range scanTarget(client, target) {
 				mu.Lock()
 				results = append(results, r)
 				mu.Unlock()
@@ -57,7 +45,7 @@ func Scan(targets []string, threads int, onFound func(Result)) []Result {
 	return results
 }
 
-func scanTarget(target string) []Result {
+func scanTarget(client *http.Client, target string) []Result {
 	origins := []string{
 		"https://evil.com",
 		"null",

@@ -1,4 +1,3 @@
-// Package ui provides the bubbletea TUI for recon-x.
 package ui
 
 import (
@@ -11,16 +10,16 @@ import (
 )
 
 var (
-	stylePurple  = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
-	styleGreen   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF87")).Bold(true)
-	styleYellow  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA502"))
-	styleCyan= lipgloss.NewStyle().Foreground(lipgloss.Color("#00B4D8")).Bold(true)
-	styleMuted   = lipgloss.NewStyle().Foreground(lipgloss.Color("#8B949E"))
-	styleBox     = lipgloss.NewStyle().
+	stylePurple = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
+	styleGreen  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF87")).Bold(true)
+	styleYellow = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA502"))
+	styleCyan   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00B4D8")).Bold(true)
+	styleMuted  = lipgloss.NewStyle().Foreground(lipgloss.Color("#8B949E"))
+	styleBox    = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#30363D")).
 			Padding(0, 1)
-	styleHeader  = lipgloss.NewStyle().
+	styleHeader = lipgloss.NewStyle().
 			Background(lipgloss.Color("#161B22")).
 			Foreground(lipgloss.Color("#7C3AED")).
 			Bold(true).
@@ -33,8 +32,8 @@ type ItemMsg struct {
 }
 
 type StepStartMsg int
-type StepDoneMsg  struct{ Step int; Count int }
-type DoneMsg      struct{}
+type StepDoneMsg struct{ Step int; Count int }
+type DoneMsg struct{}
 
 type stepState int
 
@@ -52,17 +51,15 @@ type step struct {
 
 const maxItems = 12
 
-// Model is the bubbletea model for the recon-x TUI.
 type Model struct {
 	target  string
 	steps   []step
-	items   []string // recent found items (capped at maxItems)
+	items   []string
 	spinner spinner.Model
 	done    bool
 	width   int
 }
 
-// New creates a new TUI model for the given target.
 func New(target string) Model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -96,6 +93,7 @@ func New(target string) Model {
 			{label: "SQLi detection   (error-based)"},
 			{label: "Default creds    (15 pairs)"},
 			{label: "Rate limit       (header detect)"},
+			{label: "Template scan    (built-in + custom)"},
 		},
 		spinner: sp,
 		width:   80,

@@ -1,13 +1,14 @@
 package openredirect
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 var params = []string{
@@ -26,18 +27,8 @@ type Result struct {
 	Confirmed bool   `json:"confirmed"`
 }
 
-var client = &http.Client{
-	Timeout: 6 * time.Second,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		Proxy:           http.ProxyFromEnvironment,
-	},
-	CheckRedirect: func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
-}
-
 func Check(baseURLs []string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, false)
 	seen := make(map[string]bool)
 	var deduped []string
 	for _, u := range baseURLs {
@@ -56,16 +47,16 @@ func Check(baseURLs []string, threads int, onFound func(Result)) []Result {
 	}
 
 	var results []Result
-	mu  := sync.Mutex{}
+	mu := sync.Mutex{}
 	sem := make(chan struct{}, threads)
-	wg  := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for _, j := range jobs {
 		sem <- struct{}{}
 		wg.Add(1)
 		go func(baseURL, param string) {
 			defer func() { <-sem; wg.Done() }()
-			r := testParam(baseURL, param)
+			r := testParam(client, baseURL, param)
 			if r == nil {
 				return
 			}
@@ -81,7 +72,7 @@ func Check(baseURLs []string, threads int, onFound func(Result)) []Result {
 	return results
 }
 
-func testParam(baseURL, param string) *Result {
+func testParam(client *http.Client, baseURL, param string) *Result {
 	sep := "?"
 	if strings.Contains(baseURL, "?") {
 		sep = "&"

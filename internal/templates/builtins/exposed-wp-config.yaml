@@ -1,0 +1,10 @@
+id: exposed-wp-config
+name: WordPress Config Exposed
+severity: critical
+tags: [exposure, wordpress]
+request:
+  method: GET
+  path: /wp-config.php.bak
+matchers:
+  - type: word
+    words: [DB_PASSWORD, DB_USER, table_prefix]

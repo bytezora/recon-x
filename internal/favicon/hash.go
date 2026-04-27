@@ -1,13 +1,14 @@
 package favicon
 
 import (
-	"crypto/tls"
 	"encoding/base64"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {
@@ -16,15 +17,8 @@ type Result struct {
 	B64  string `json:"b64"`
 }
 
-var client = &http.Client{
-	Timeout: 8 * time.Second,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyFromEnvironment,
-	},
-}
-
 func Scan(baseURLs []string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, true)
 	var (
 		mu      sync.Mutex
 		results []Result
@@ -37,7 +31,7 @@ func Scan(baseURLs []string, threads int, onFound func(Result)) []Result {
 		go func(u string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			r, ok := scanOne(u)
+			r, ok := scanOne(client, u)
 			if !ok {
 				return
 			}
@@ -53,9 +47,9 @@ func Scan(baseURLs []string, threads int, onFound func(Result)) []Result {
 	return results
 }
 
-func scanOne(baseURL string) (Result, bool) {
+func scanOne(client *http.Client, baseURL string) (Result, bool) {
 	faviconURL := strings.TrimRight(baseURL, "/") + "/favicon.ico"
-	data, err := fetchBytes(faviconURL)
+	data, err := fetchBytes(client, faviconURL)
 	if err != nil || len(data) == 0 {
 		return Result{}, false
 	}
@@ -68,7 +62,7 @@ func scanOne(baseURL string) (Result, bool) {
 	}, true
 }
 
-func fetchBytes(url string) ([]byte, error) {
+func fetchBytes(client *http.Client, url string) ([]byte, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err

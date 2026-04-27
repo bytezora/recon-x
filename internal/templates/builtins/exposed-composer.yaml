@@ -1,0 +1,10 @@
+id: exposed-composer
+name: Composer.json Exposed
+severity: medium
+tags: [exposure, php]
+request:
+  method: GET
+  path: /composer.json
+matchers:
+  - type: word
+    words: ['"require"', '"name"', '"description"']

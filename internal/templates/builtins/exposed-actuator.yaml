@@ -1,0 +1,10 @@
+id: exposed-actuator
+name: Spring Boot Actuator Exposed
+severity: high
+tags: [exposure, spring]
+request:
+  method: GET
+  path: /actuator
+matchers:
+  - type: word
+    words: ['"_links"', '"health"', '"env"']

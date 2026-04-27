@@ -1,0 +1,10 @@
+id: exposed-kibana
+name: Kibana Dashboard Exposed
+severity: high
+tags: [exposure, elk]
+request:
+  method: GET
+  path: /app/kibana
+matchers:
+  - type: word
+    words: ["kibana", "Elastic", "kbn-"]

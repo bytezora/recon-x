@@ -1,0 +1,10 @@
+id: xss-reflected
+name: Reflected XSS
+severity: medium
+tags: [xss, injection]
+request:
+  method: GET
+  path: /?q=<script>alert(1)</script>
+matchers:
+  - type: word
+    words: ["<script>alert(1)</script>"]

@@ -1,0 +1,10 @@
+id: exposed-readme
+name: README File Exposed
+severity: info
+tags: [exposure]
+request:
+  method: GET
+  path: /README.md
+matchers:
+  - type: word
+    words: ["# ", "## ", "### "]

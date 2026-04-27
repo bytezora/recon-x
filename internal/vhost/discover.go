@@ -1,7 +1,6 @@
 package vhost
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -9,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/httpclient"
 	"github.com/bytezora/recon-x/internal/httpcheck"
 )
 
@@ -94,19 +94,6 @@ func Discover(httpResults []httpcheck.Result, threads int, onFound func(Result))
 	return results
 }
 
-func makeClient() *http.Client {
-	return &http.Client{
-		Timeout: 6 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-}
-
 func getBaseline(ip, host string, port int, useTLS bool) (int, int) {
 	return probeVHost(ip, host, port, useTLS)
 }
@@ -122,7 +109,7 @@ func probeVHost(ip, host string, port int, useTLS bool) (int, int) {
 		return 0, 0
 	}
 	req.Host = host
-	c := makeClient()
+	c := httpclient.New(6*time.Second, false)
 	resp, err := c.Do(req)
 	if err != nil {
 		return 0, 0

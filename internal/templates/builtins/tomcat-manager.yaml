@@ -1,0 +1,10 @@
+id: tomcat-manager
+name: Apache Tomcat Manager Exposed
+severity: high
+tags: [exposure, java]
+request:
+  method: GET
+  path: /manager/html
+matchers:
+  - type: word
+    words: ["Apache Tomcat", "Tomcat Web Application Manager"]

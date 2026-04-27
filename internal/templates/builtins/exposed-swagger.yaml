@@ -1,0 +1,10 @@
+id: exposed-swagger
+name: Swagger UI Exposed
+severity: low
+tags: [exposure, api]
+request:
+  method: GET
+  path: /swagger-ui.html
+matchers:
+  - type: word
+    words: ["swagger-ui", "Swagger UI"]

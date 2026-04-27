@@ -1,0 +1,10 @@
+id: exposed-package-json
+name: package.json Exposed
+severity: low
+tags: [exposure, nodejs]
+request:
+  method: GET
+  path: /package.json
+matchers:
+  - type: word
+    words: ['"dependencies"', '"scripts"', '"version"']

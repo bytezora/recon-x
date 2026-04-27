@@ -1,9 +1,6 @@
-// Package httpcheck probes HTTP/HTTPS services and fingerprints
-// web technologies from response headers and body content.
 package httpcheck
 
 import (
-"crypto/tls"
 "fmt"
 "io"
 "net/http"
@@ -11,13 +8,11 @@ import (
 "sync"
 "time"
 
+"github.com/bytezora/recon-x/internal/httpclient"
 "github.com/bytezora/recon-x/internal/portscan"
 )
 
-const (
-httpTimeout = 10 * time.Second
-bodyLimit   = 512 * 1024
-)
+const bodyLimit = 512 * 1024
 
 var httpPorts = map[int]bool{
 80: true, 443: true,
@@ -25,10 +20,10 @@ var httpPorts = map[int]bool{
 8000: true, 8001: true, 8008: true,
 8080: true, 8443: true, 8888: true,
 4443: true, 7443: true,
-9000: true, 9090: true, // Prometheus
-9200: true, 9300: true, // Elasticsearch
-5601: true,             // Kibana
-15672: true,            // RabbitMQ management
+9000: true, 9090: true,
+9200: true, 9300: true,
+5601: true,
+15672: true,
 }
 
 var secHeaders = []string{
@@ -40,7 +35,6 @@ var secHeaders = []string{
 "Permissions-Policy",
 }
 
-// Result holds the HTTP probe data for a single service.
 type Result struct {
 URL            string
 Host           string
@@ -50,28 +44,18 @@ Title          string
 Server         string
 Tech           []string
 Redirect       string
-MissingHeaders []string   // security headers absent from response
+MissingHeaders []string
 Headers        http.Header `json:"-"`
 Body           string      `json:"-"`
 }
 
-var httpClient = &http.Client{
-Timeout: httpTimeout,
-Transport: &http.Transport{
-TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-Proxy:           http.ProxyFromEnvironment,
-},
-CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-return http.ErrUseLastResponse
-},
-}
-
-// Check probes every open port that looks like HTTP/HTTPS.
 func Check(ports []portscan.Result, threads int) []Result {
 results := make([]Result, 0, 16)
 mu      := sync.Mutex{}
 sem     := make(chan struct{}, threads)
 wg      := sync.WaitGroup{}
+
+client := httpclient.New(10*time.Second, false)
 
 for _, p := range ports {
 if !httpPorts[p.Port] {
@@ -86,7 +70,7 @@ defer func() { <-sem; wg.Done() }()
 scheme := schemeFor(port.Port)
 url    := fmt.Sprintf("%s://%s:%d", scheme, port.Host, port.Port)
 
-if r := probe(url, port.Host, port.Port); r != nil {
+if r := probe(client, url, port.Host, port.Port); r != nil {
 mu.Lock()
 results = append(results, *r)
 mu.Unlock()
@@ -106,8 +90,8 @@ return "https"
 return "http"
 }
 
-func probe(url, host string, port int) *Result {
-resp, err := httpClient.Get(url)
+func probe(client *http.Client, url, host string, port int) *Result {
+resp, err := client.Get(url)
 if err != nil {
 return nil
 }
@@ -130,7 +114,6 @@ Body:           body,
 }
 }
 
-// checkSecHeaders returns a list of security headers absent from h.
 func checkSecHeaders(h http.Header) []string {
 var missing []string
 for _, name := range secHeaders {

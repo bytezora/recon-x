@@ -1,0 +1,10 @@
+id: wp-debug-log
+name: WordPress Debug Log Exposed
+severity: medium
+tags: [exposure, wordpress]
+request:
+  method: GET
+  path: /wp-content/debug.log
+matchers:
+  - type: word
+    words: ["PHP Fatal error", "PHP Warning", "PHP Notice"]

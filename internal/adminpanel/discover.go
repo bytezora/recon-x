@@ -1,14 +1,13 @@
 package adminpanel
 
 import (
-	"crypto/tls"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/httpclient"
 	"github.com/bytezora/recon-x/internal/httpcheck"
 )
 
@@ -52,16 +51,7 @@ func Discover(httpResults []httpcheck.Result, threads int, onFound func(Result))
 	if threads <= 0 {
 		threads = 30
 	}
-	client := &http.Client{
-		Timeout: 6 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	client := httpclient.New(10*time.Second, false)
 
 	type job struct {
 		base string

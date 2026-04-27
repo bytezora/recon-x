@@ -30,6 +30,7 @@ import (
 	"github.com/bytezora/recon-x/internal/ratelimit"
 	"github.com/bytezora/recon-x/internal/sqli"
 	"github.com/bytezora/recon-x/internal/takeover"
+	"github.com/bytezora/recon-x/internal/templates"
 	"github.com/bytezora/recon-x/internal/vhost"
 )
 
@@ -62,6 +63,7 @@ type Report struct {
 	SQLi         []sqli.Result         `json:"sqli,omitempty"`
 	DefaultCreds []defaultcreds.Result `json:"default_creds,omitempty"`
 	RateLimit    []ratelimit.Result    `json:"rate_limit,omitempty"`
+	Templates    []templates.Match     `json:"templates,omitempty"`
 }
 
 func WriteJSON(
@@ -92,6 +94,7 @@ func WriteJSON(
 	sqliRes      []sqli.Result,
 	defaultCreds []defaultcreds.Result,
 	rateLimit    []ratelimit.Result,
+	tplMatches   []templates.Match,
 ) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -130,5 +133,6 @@ func WriteJSON(
 		SQLi:         sqliRes,
 		DefaultCreds: defaultCreds,
 		RateLimit:    rateLimit,
+		Templates:    tplMatches,
 	})
 }

@@ -14,9 +14,11 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/adminpanel"
 "github.com/bytezora/recon-x/internal/axfr"
 "github.com/bytezora/recon-x/internal/buckets"
+"github.com/bytezora/recon-x/internal/config"
 "github.com/bytezora/recon-x/internal/crtsh"
 "github.com/bytezora/recon-x/internal/dirbust"
 "github.com/bytezora/recon-x/internal/ghsearch"
+"github.com/bytezora/recon-x/internal/httpclient"
 "github.com/bytezora/recon-x/internal/httpcheck"
 "github.com/bytezora/recon-x/internal/jsscan"
 "github.com/bytezora/recon-x/internal/notify"
@@ -30,6 +32,7 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/sqli"
 "github.com/bytezora/recon-x/internal/state"
 "github.com/bytezora/recon-x/internal/subdomain"
+"github.com/bytezora/recon-x/internal/templates"
 "github.com/bytezora/recon-x/internal/tlscheck"
 "github.com/bytezora/recon-x/internal/vulns"
 "github.com/bytezora/recon-x/internal/waf"
@@ -47,7 +50,7 @@ tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
-version      = "1.6.0"
+version      = "2.0.0"
 defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 )
 
@@ -83,10 +86,25 @@ SARIF          string
 NotifySlack    string
 NotifyTelegram string
 Resume         bool
+ConfigFile     string
+Modules        []string
+OutputDir      string
+Retries        int
+Rate           int
+Silent         bool
+Verbose        bool
+TemplatePaths  []string
 }
 
 func main() {
 cfg := parseFlags()
+
+if cfg.Retries > 0 {
+httpclient.SetRetries(cfg.Retries)
+}
+if cfg.Rate > 0 {
+httpclient.SetRate(cfg.Rate)
+}
 
 if cfg.Proxy != "" {
 os.Setenv("HTTP_PROXY", cfg.Proxy)
@@ -146,6 +164,7 @@ finalAdminPanel   []adminpanel.Result
 finalSQLi         []sqli.Result
 finalDefaultCreds []defaultcreds.Result
 finalRateLimit    []ratelimit.Result
+finalTemplates    []templates.Match
 )
 
 go func() {
@@ -157,6 +176,7 @@ runScans(cfg, prog,
 &finalTakeover, &finalCORS, &finalBypass, &finalVHosts,
 &finalFavicons, &finalASN, &finalGraphQL, &finalEmailSec,
 &finalAdminPanel, &finalSQLi, &finalDefaultCreds, &finalRateLimit,
+&finalTemplates,
 ntfyCfg, stateObj, stateFile,
 )
 prog.Send(ui.DoneMsg{})
@@ -168,7 +188,7 @@ os.Exit(1)
 }
 
 if cfg.SARIF != "" {
-if err := output.WriteSARIF(cfg.SARIF, finalVulns, finalSQLi, finalTakeover, finalCORS, finalDefaultCreds); err != nil {
+if err := output.WriteSARIF(cfg.SARIF, finalVulns, finalSQLi, finalTakeover, finalCORS, finalDefaultCreds, finalTemplates); err != nil {
 fail("SARIF error: %v", err)
 } else {
 success("SARIF output → %s", styleYellow.Render(cfg.SARIF))
@@ -180,7 +200,7 @@ finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
 finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
 finalTakeover, finalCORS, finalBypass, finalVHosts,
 finalFavicons, finalASN, finalGraphQL, finalEmailSec,
-finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit, cfg.Output); err != nil {
+finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit, finalTemplates, cfg.Output); err != nil {
 fail("report error: %v", err)
 os.Exit(1)
 }
@@ -192,7 +212,7 @@ finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
 finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
 finalTakeover, finalCORS, finalBypass, finalVHosts,
 finalFavicons, finalASN, finalGraphQL, finalEmailSec,
-finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit); err != nil {
+finalAdminPanel, finalSQLi, finalDefaultCreds, finalRateLimit, finalTemplates); err != nil {
 fail("JSON error: %v", err)
 } else {
 success("JSON output → %s", styleYellow.Render(cfg.JSON))
@@ -233,6 +253,7 @@ adminR   *[]adminpanel.Result,
 sqliR    *[]sqli.Result,
 credsR   *[]defaultcreds.Result,
 rateLimR *[]ratelimit.Result,
+tplR     *[]templates.Match,
 ntfyCfg  notify.Config,
 stateObj *state.State,
 stateFile string,
@@ -765,6 +786,28 @@ stateObj.Mark(24)
 state.Save(stateFile, stateObj)
 }
 prog.Send(ui.StepDoneMsg{Step: 24, Count: len(*rateLimR)})
+
+prog.Send(ui.StepStartMsg(25))
+if !stateObj.Done(25) {
+tmpls, err := templates.LoadBuiltins()
+if err == nil && len(cfg.TemplatePaths) > 0 {
+custom, cerr := templates.LoadCustom(cfg.TemplatePaths)
+if cerr == nil {
+tmpls = append(tmpls, custom...)
+}
+}
+if err == nil {
+*tplR = templates.Run(tmpls, baseURLs, cfg.Threads, func(m templates.Match) {
+prog.Send(ui.ItemMsg{
+Icon: styleYellow.Render("⬡"),
+Text: styleMuted.Render("["+m.TemplateID+"]") + "  " + styleYellow.Render(m.Name) + "  " + styleMuted.Render(m.URL),
+})
+})
+}
+stateObj.Mark(25)
+state.Save(stateFile, stateObj)
+}
+prog.Send(ui.StepDoneMsg{Step: 25, Count: len(*tplR)})
 }
 
 func parseFlags() Config {
@@ -783,6 +826,13 @@ sarifOut       := flag.String("sarif",           "",            "SARIF output pa
 notifySlack    := flag.String("notify-slack",    "",            "Slack incoming webhook URL for critical finding alerts")
 notifyTelegram := flag.String("notify-telegram", "",            "Telegram bot TOKEN@CHATID for critical alerts")
 resume         := flag.Bool("resume",            false,         "Resume interrupted scan from state file")
+configFile     := flag.String("config",          "",            "Path to YAML config file")
+modulesFlag    := flag.String("modules",         "",            "Comma-separated modules to run (default: all)")
+outputDir      := flag.String("output-dir",      "",            "Directory for output files")
+retries        := flag.Int("retries",            2,             "Number of HTTP retries")
+rate           := flag.Int("rate",               50,            "Max HTTP requests per second")
+silent         := flag.Bool("silent",            false,         "Suppress all non-critical output")
+verbose        := flag.Bool("verbose",           false,         "Enable verbose output")
 ver            := flag.Bool("version",           false,         "Print version and exit")
 dbHash         := flag.Bool("db-hash",           false,         "Print CVE database fingerprint and exit (for stamping integrity.go)")
 flag.Parse()
@@ -797,13 +847,7 @@ fmt.Println(vulns.ComputeDBHash())
 os.Exit(0)
 }
 
-if *target == "" {
-fail("no target specified. Usage: recon-x -target <domain>")
-flag.Usage()
-os.Exit(1)
-}
-
-return Config{
+cfg := Config{
 Target:         *target,
 Output:         *out,
 JSON:           *jsonOut,
@@ -819,7 +863,75 @@ SARIF:          *sarifOut,
 NotifySlack:    *notifySlack,
 NotifyTelegram: *notifyTelegram,
 Resume:         *resume,
+ConfigFile:     *configFile,
+OutputDir:      *outputDir,
+Retries:        *retries,
+Rate:           *rate,
+Silent:         *silent,
+Verbose:        *verbose,
 }
+
+if *modulesFlag != "" {
+cfg.Modules = strings.Split(*modulesFlag, ",")
+}
+
+if *configFile != "" {
+fileCfg, err := config.Load(*configFile)
+if err == nil {
+if fileCfg.Threads > 0 && *threads == 50 {
+cfg.Threads = fileCfg.Threads
+}
+if fileCfg.Rate > 0 && *rate == 50 {
+cfg.Rate = fileCfg.Rate
+}
+if fileCfg.Retries > 0 && *retries == 2 {
+cfg.Retries = fileCfg.Retries
+}
+if fileCfg.OutputDir != "" && *outputDir == "" {
+cfg.OutputDir = fileCfg.OutputDir
+}
+if fileCfg.GithubToken != "" && *githubToken == "" {
+cfg.GitHubToken = fileCfg.GithubToken
+}
+if len(fileCfg.Modules) > 0 && *modulesFlag == "" {
+cfg.Modules = fileCfg.Modules
+}
+if len(fileCfg.Templates) > 0 {
+cfg.TemplatePaths = fileCfg.Templates
+}
+if fileCfg.Silent {
+cfg.Silent = true
+}
+if fileCfg.Verbose {
+cfg.Verbose = true
+}
+if cfg.Target == "" && len(fileCfg.Targets) > 0 {
+cfg.Target = fileCfg.Targets[0]
+}
+}
+}
+
+if cfg.OutputDir != "" {
+if err := os.MkdirAll(cfg.OutputDir, 0755); err == nil {
+if cfg.Output == "report.html" {
+cfg.Output = cfg.OutputDir + "/report.html"
+}
+if cfg.JSON != "" {
+cfg.JSON = cfg.OutputDir + "/report.json"
+}
+if cfg.SARIF != "" {
+cfg.SARIF = cfg.OutputDir + "/report.sarif"
+}
+}
+}
+
+if cfg.Target == "" {
+fail("no target specified. Usage: recon-x -target <domain>")
+flag.Usage()
+os.Exit(1)
+}
+
+return cfg
 }
 
 func success(format string, a ...any) {

@@ -1,0 +1,10 @@
+id: git-config-exposed
+name: Exposed .git/config
+severity: high
+tags: [exposure, git]
+request:
+  method: GET
+  path: /.git/config
+matchers:
+  - type: word
+    words: ["[core]", "[remote"]

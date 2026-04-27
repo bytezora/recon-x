@@ -1,13 +1,12 @@
-// Package crtsh queries the Certificate Transparency log at crt.sh
-// to passively discover subdomains without sending any DNS traffic.
 package crtsh
 
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 const apiURL = "https://crt.sh/?q=%%.%s&output=json"
@@ -16,9 +15,8 @@ type entry struct {
 	NameValue string `json:"name_value"`
 }
 
-// Lookup returns unique subdomains for domain found in CT logs.
 func Lookup(domain string) ([]string, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := httpclient.New(15*time.Second, true)
 	resp, err := client.Get(fmt.Sprintf(apiURL, domain))
 	if err != nil {
 		return nil, err

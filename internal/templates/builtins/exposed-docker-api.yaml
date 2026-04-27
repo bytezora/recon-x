@@ -1,0 +1,10 @@
+id: exposed-docker-api
+name: Docker Remote API Exposed
+severity: critical
+tags: [exposure, docker]
+request:
+  method: GET
+  path: /v1.41/info
+matchers:
+  - type: word
+    words: ['"DockerRootDir"', '"ServerVersion"', '"Containers"']

@@ -1,11 +1,11 @@
 # recon-x
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.6.0-39ff14?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.0.0-39ff14?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square&color=39ff14)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
 
-Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, and HTTP screenshots. Outputs a self-contained HTML report and optional JSON.
+Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, HTTP screenshots, and YAML template scanning. Outputs a self-contained HTML report and optional JSON/SARIF.
 
 ---
 
@@ -44,6 +44,9 @@ recon-x -target example.com -proxy http://127.0.0.1:8080
 recon-x -target example.com -scope-file scope.txt -sarif results.sarif
 recon-x -target example.com -notify-slack https://hooks.slack.com/... -notify-telegram TOKEN@CHATID
 recon-x -target example.com -resume
+recon-x -target example.com -config recon.yaml
+recon-x -target example.com -retries 3 -rate 30 -modules subdomain,portscan,vulns
+recon-x -target example.com -output-dir ./results -verbose
 ```
 
 ```
@@ -62,6 +65,13 @@ recon-x -target example.com -resume
 -notify-slack        Slack incoming webhook URL for alerts       (optional)
 -notify-telegram     Telegram TOKEN@CHATID for alerts            (optional)
 -resume              resume interrupted scan from state file     (optional)
+-config              path to YAML config file                    (optional)
+-modules             comma-separated modules to run              (optional, default: all)
+-output-dir          directory for all output files              (optional)
+-retries             HTTP retry count                            (default: 2)
+-rate                max HTTP requests per second                (default: 50)
+-silent              suppress non-critical output
+-verbose             enable verbose output
 -version             print version
 ```
 
@@ -95,7 +105,8 @@ recon-x -target example.com -resume
 23. SQLi detection → reflection + error-based, zero exploitation
 24. Default credentials → 15 common pairs, login form detection
 25. Rate limit headers → X-RateLimit-*, Retry-After detection
-    → self-contained HTML report + optional JSON
+26. Template scan → 20 built-in YAML templates + custom templates
+    → self-contained HTML report + optional JSON + optional SARIF
 ```
 
 ---
@@ -108,7 +119,7 @@ recon-x -target example.com -resume
 
 ## Report
 
-Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots, takeover, CORS, 403 bypass, vhosts, favicon, ASN, GraphQL, email security, admin panels, sqli, default creds, rate limit.
+Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots, takeover, CORS, 403 bypass, vhosts, favicon, ASN, GraphQL, email security, admin panels, sqli, default creds, rate limit, templates.
 
 ![Report](assets/report.png)
 
@@ -121,6 +132,19 @@ Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CV
 Matches on banner strings, HTTP headers, response bodies and version endpoints (`/actuator/info`, `/_cluster/stats`, etc.). DB is SHA-256 protected.
 
 WAF vendors: Cloudflare, Akamai, Imperva, AWS WAF, F5, Barracuda, ModSecurity, Fortinet, Radware.
+
+---
+
+## What's New in v2.0.0
+
+- **Template engine** — 20 built-in YAML templates covering exposed configs, debug endpoints, admin panels, and misconfigurations. Custom templates supported via `-config` or `templates:` field.
+- **Rate limiting** — global HTTP rate limiter (`-rate`, default 50 req/s) prevents bans during large scans.
+- **Retry logic** — automatic HTTP retries on transient failures (`-retries`, default 2).
+- **Config file** — full YAML config (`-config recon.yaml`) for targets, modules, tokens, templates, output paths, rate/retries.
+- **Module selection** — run only specific modules with `-modules subdomain,portscan,vulns` to speed up targeted scans.
+- **Output directory** — `--output-dir ./results` auto-organises HTML, JSON, and SARIF into one directory.
+- **Silent / Verbose modes** — `-silent` suppresses informational output; `-verbose` enables extra detail.
+- **Shared HTTP client** — all 14 scan modules use a single pool-aware client with configurable follow-redirect behaviour.
 
 ---
 

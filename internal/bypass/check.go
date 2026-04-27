@@ -1,12 +1,13 @@
 package bypass
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {
@@ -17,18 +18,8 @@ type Result struct {
 	Bypassed   bool   `json:"bypassed"`
 }
 
-var client = &http.Client{
-	Timeout: 8 * time.Second,
-	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyFromEnvironment,
-	},
-}
-
 func Check(forbidden []string, threads int, onFound func(Result)) []Result {
+	client := httpclient.New(10*time.Second, false)
 	var (
 		mu      sync.Mutex
 		results []Result
@@ -41,7 +32,7 @@ func Check(forbidden []string, threads int, onFound func(Result)) []Result {
 		go func(u string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			for _, r := range checkOne(u) {
+			for _, r := range checkOne(client, u) {
 				mu.Lock()
 				results = append(results, r)
 				mu.Unlock()
@@ -55,7 +46,7 @@ func Check(forbidden []string, threads int, onFound func(Result)) []Result {
 	return results
 }
 
-func checkOne(rawURL string) []Result {
+func checkOne(client *http.Client, rawURL string) []Result {
 	parsed, err := parseURL(rawURL)
 	if err != nil {
 		return nil

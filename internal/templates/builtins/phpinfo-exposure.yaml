@@ -1,0 +1,10 @@
+id: phpinfo-exposure
+name: PHP Info Page Exposed
+severity: medium
+tags: [exposure, php]
+request:
+  method: GET
+  path: /phpinfo.php
+matchers:
+  - type: word
+    words: ["phpinfo()", "PHP Version"]

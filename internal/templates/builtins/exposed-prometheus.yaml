@@ -1,0 +1,10 @@
+id: exposed-prometheus
+name: Prometheus Metrics Exposed
+severity: medium
+tags: [exposure, metrics]
+request:
+  method: GET
+  path: /metrics
+matchers:
+  - type: word
+    words: ["# HELP", "# TYPE", "go_goroutines"]

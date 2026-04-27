@@ -1,0 +1,10 @@
+id: exposed-jenkins
+name: Jenkins Dashboard Exposed
+severity: high
+tags: [exposure, jenkins]
+request:
+  method: GET
+  path: /jenkins
+matchers:
+  - type: word
+    words: ["Dashboard [Jenkins]", "jenkins-root-action", "Jenkins"]

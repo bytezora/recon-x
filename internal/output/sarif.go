@@ -9,6 +9,7 @@ import (
 	"github.com/bytezora/recon-x/internal/defaultcreds"
 	"github.com/bytezora/recon-x/internal/sqli"
 	"github.com/bytezora/recon-x/internal/takeover"
+	"github.com/bytezora/recon-x/internal/templates"
 	"github.com/bytezora/recon-x/internal/vulns"
 )
 
@@ -64,13 +65,14 @@ type sarifArtLoc struct {
 	URI string `json:"uri"`
 }
 
-func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, takeoverRes []takeover.Result, corsRes []cors.Result, credsRes []defaultcreds.Result) error {
+func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, takeoverRes []takeover.Result, corsRes []cors.Result, credsRes []defaultcreds.Result, tplMatches []templates.Match) error {
 	rules := []sarifRule{
 		{ID: "CVE", Name: "CVE Match", ShortDescription: sarifMessage{Text: "Known CVE matched via banner/header"}},
 		{ID: "SQLI001", Name: "SQLi Detected", ShortDescription: sarifMessage{Text: "SQL injection error string in response"}},
 		{ID: "TAKEOVER001", Name: "Subdomain Takeover", ShortDescription: sarifMessage{Text: "Dangling CNAME pointing to unclaimed service"}},
 		{ID: "CORS001", Name: "CORS Misconfiguration", ShortDescription: sarifMessage{Text: "Origin reflection or wildcard with credentials"}},
 		{ID: "CREDS001", Name: "Default Credentials", ShortDescription: sarifMessage{Text: "Default credentials accepted by login endpoint"}},
+		{ID: "TEMPLATE001", Name: "Template Match", ShortDescription: sarifMessage{Text: "Custom or built-in template matched"}},
 	}
 
 	var results []sarifResult
@@ -127,6 +129,21 @@ func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, ta
 			})
 		}
 	}
+	for _, tm := range tplMatches {
+		level := "note"
+		switch tm.Severity {
+		case "critical", "high":
+			level = "error"
+		case "medium":
+			level = "warning"
+		}
+		results = append(results, sarifResult{
+			RuleID:    "TEMPLATE001",
+			Level:     level,
+			Message:   sarifMessage{Text: fmt.Sprintf("[%s] %s matched at %s — %s", tm.TemplateID, tm.Name, tm.URL, tm.Matched)},
+			Locations: []sarifLocation{{PhysicalLocation: sarifPhysLoc{ArtifactLocation: sarifArtLoc{URI: tm.URL}}}},
+		})
+	}
 
 	log := sarifLog{
 		Version: "2.1.0",
@@ -134,7 +151,7 @@ func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, ta
 		Runs: []sarifRun{{
 			Tool: sarifTool{Driver: sarifDriver{
 				Name:           "recon-x",
-				Version:        "1.6.0",
+				Version:        "2.0.0",
 				InformationURI: "https://github.com/bytezora/recon-x",
 				Rules:          rules,
 			}},

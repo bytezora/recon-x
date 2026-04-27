@@ -1,11 +1,12 @@
 module github.com/bytezora/recon-x
 
-go 1.22
+go 1.25.0
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.10.0
+	golang.org/x/time v0.15.0
 )
 
 require (
@@ -24,4 +25,5 @@ require (
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
