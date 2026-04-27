@@ -1,7 +1,7 @@
 # recon-x
 
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.3.0-39ff14?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.0-39ff14?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
 
 Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, and HTTP screenshots. Outputs a self-contained HTML report and optional JSON.

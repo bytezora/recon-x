@@ -28,11 +28,19 @@ import (
 	"github.com/bytezora/recon-x/internal/vulns"
 	"github.com/bytezora/recon-x/internal/waf"
 	"github.com/bytezora/recon-x/internal/whois"
+	"github.com/bytezora/recon-x/internal/asn"
+	"github.com/bytezora/recon-x/internal/bypass"
+	"github.com/bytezora/recon-x/internal/cors"
+	"github.com/bytezora/recon-x/internal/emailsec"
+	"github.com/bytezora/recon-x/internal/favicon"
+	"github.com/bytezora/recon-x/internal/graphql"
+	"github.com/bytezora/recon-x/internal/takeover"
+	"github.com/bytezora/recon-x/internal/vhost"
 	"github.com/bytezora/recon-x/ui"
 )
 
 const (
-	version      = "1.3.0"
+	version      = "1.4.0"
 	defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 )
 
@@ -91,6 +99,14 @@ func main() {
 		finalAXFR      []axfr.Result
 		finalWHOIS     *whois.Result
 		finalShots     []screenshot.Result
+		finalTakeover  []takeover.Result
+		finalCORS      []cors.Result
+		finalBypass    []bypass.Result
+		finalVHosts    []vhost.Result
+		finalFavicons  []favicon.Result
+		finalASN       []asn.Result
+		finalGraphQL   []graphql.Result
+		finalEmailSec  *emailsec.Result
 	)
 
 	go func() {
@@ -99,6 +115,8 @@ func main() {
 			&finalVulns, &finalWAFs, &finalDirs, &finalJS,
 			&finalGH, &finalBuckets,
 			&finalTLS, &finalRedirects, &finalAXFR, &finalWHOIS, &finalShots,
+			&finalTakeover, &finalCORS, &finalBypass, &finalVHosts,
+			&finalFavicons, &finalASN, &finalGraphQL, &finalEmailSec,
 		)
 		prog.Send(ui.DoneMsg{})
 	}()
@@ -110,7 +128,9 @@ func main() {
 
 	if err := report.Generate(cfg.Target, finalSubs, finalPorts, finalHTTP,
 		finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
-		finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots, cfg.Output); err != nil {
+		finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
+		finalTakeover, finalCORS, finalBypass, finalVHosts,
+		finalFavicons, finalASN, finalGraphQL, finalEmailSec, cfg.Output); err != nil {
 		fail("report error: %v", err)
 		os.Exit(1)
 	}
@@ -119,7 +139,9 @@ func main() {
 	if cfg.JSON != "" {
 		if err := output.WriteJSON(cfg.JSON, cfg.Target, finalSubs, finalPorts, finalHTTP,
 			finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
-			finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots); err != nil {
+			finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots,
+			finalTakeover, finalCORS, finalBypass, finalVHosts,
+			finalFavicons, finalASN, finalGraphQL, finalEmailSec); err != nil {
 			fail("JSON error: %v", err)
 		} else {
 			success("JSON output → %s", styleYellow.Render(cfg.JSON))
@@ -147,7 +169,15 @@ func runScans(
 	redir *[]openredirect.Result,
 	axfrr *[]axfr.Result,
 	who   **whois.Result,
-	shots *[]screenshot.Result,
+	shots    *[]screenshot.Result,
+	tkover   *[]takeover.Result,
+	corsR    *[]cors.Result,
+	bypassR  *[]bypass.Result,
+	vhosts   *[]vhost.Result,
+	favicons *[]favicon.Result,
+	asnR     *[]asn.Result,
+	gqlR     *[]graphql.Result,
+	emailR   **emailsec.Result,
 ) {
 	prog.Send(ui.StepStartMsg(0))
 	var passiveNames []string
@@ -358,7 +388,6 @@ func runScans(
 		return 0
 	}()})
 
-	// Step 12: HTTP screenshots
 	prog.Send(ui.StepStartMsg(12))
 	*shots = screenshot.Capture(baseURLs, cfg.Threads, func(r screenshot.Result) {
 		prog.Send(ui.ItemMsg{
@@ -367,6 +396,128 @@ func runScans(
 		})
 	})
 	prog.Send(ui.StepDoneMsg{Step: 12, Count: len(*shots)})
+
+	prog.Send(ui.StepStartMsg(13))
+	var subList []string
+	for _, s := range *subs {
+		subList = append(subList, s.Subdomain)
+	}
+	*tkover = takeover.Check(subList, cfg.Threads, func(r takeover.Result) {
+		if r.Vulnerable {
+			prog.Send(ui.ItemMsg{
+				Icon: styleRed.Render("⚠"),
+				Text: styleRed.Render(r.Subdomain) + "  " + styleMuted.Render(r.CNAME) + "  " + styleYellow.Render(r.Service),
+			})
+		}
+	})
+	prog.Send(ui.StepDoneMsg{Step: 13, Count: func() int {
+		n := 0
+		for _, r := range *tkover {
+			if r.Vulnerable {
+				n++
+			}
+		}
+		return n
+	}()})
+
+	prog.Send(ui.StepStartMsg(14))
+	*corsR = cors.Scan(baseURLs, cfg.Threads, func(r cors.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleYellow.Render("↺"),
+			Text: styleMuted.Render(r.URL) + "  " + styleYellow.Render(r.Origin),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 14, Count: len(*corsR)})
+
+	prog.Send(ui.StepStartMsg(15))
+	var forbiddenURLs []string
+	for _, d := range *dirs {
+		if d.StatusCode == 403 {
+			forbiddenURLs = append(forbiddenURLs, d.URL)
+		}
+	}
+	*bypassR = bypass.Check(forbiddenURLs, cfg.Threads, func(r bypass.Result) {
+		if r.Bypassed {
+			prog.Send(ui.ItemMsg{
+				Icon: styleGreen.Render("✓"),
+				Text: styleMuted.Render(r.URL) + "  " + styleYellow.Render(r.Technique),
+			})
+		}
+	})
+	prog.Send(ui.StepDoneMsg{Step: 15, Count: func() int {
+		n := 0
+		for _, r := range *bypassR {
+			if r.Bypassed {
+				n++
+			}
+		}
+		return n
+	}()})
+
+	prog.Send(ui.StepStartMsg(16))
+	*vhosts = vhost.Discover(*http, cfg.Threads, func(r vhost.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("◈"),
+			Text: styleMuted.Render(r.IP) + "  " + styleYellow.Render(r.VHost) + "  " + styleMuted.Render(fmt.Sprintf("%d", r.Status)),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 16, Count: len(*vhosts)})
+
+	prog.Send(ui.StepStartMsg(17))
+	*favicons = favicon.Scan(baseURLs, cfg.Threads, func(r favicon.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleMuted.Render("⬡"),
+			Text: styleMuted.Render(r.URL) + "  " + styleYellow.Render(fmt.Sprintf("%d", r.Hash)),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 17, Count: len(*favicons)})
+
+	prog.Send(ui.StepStartMsg(18))
+	{
+		seenIP := map[string]bool{}
+		var ips []string
+		for _, p := range *ports {
+			if !seenIP[p.IP] && p.IP != "" {
+				seenIP[p.IP] = true
+				ips = append(ips, p.IP)
+			}
+		}
+		*asnR = asn.Lookup(ips, cfg.Threads, func(r asn.Result) {
+			prog.Send(ui.ItemMsg{
+				Icon: styleMuted.Render("◈"),
+				Text: styleMuted.Render(r.IP) + "  " + styleYellow.Render(r.ASN) + "  " + styleMuted.Render(r.Org),
+			})
+		})
+	}
+	prog.Send(ui.StepDoneMsg{Step: 18, Count: len(*asnR)})
+
+	prog.Send(ui.StepStartMsg(19))
+	*gqlR = graphql.Probe(baseURLs, cfg.Threads, func(r graphql.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleGreen.Render("⬡"),
+			Text: styleMuted.Render(r.Endpoint) + "  " + styleYellow.Render(fmt.Sprintf("introspection:%v", r.Introspection)),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 19, Count: len(*gqlR)})
+
+	prog.Send(ui.StepStartMsg(20))
+	if esResult, err := emailsec.Check(cfg.Target); err == nil {
+		*emailR = esResult
+		spoofable := ""
+		if esResult.Spoofable {
+			spoofable = " ⚠ SPOOFABLE"
+		}
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("✉"),
+			Text: styleMuted.Render(cfg.Target) + styleRed.Render(spoofable),
+		})
+	}
+	prog.Send(ui.StepDoneMsg{Step: 20, Count: func() int {
+		if *emailR != nil {
+			return 1
+		}
+		return 0
+	}()})
 }
 
 func parseFlags() Config {

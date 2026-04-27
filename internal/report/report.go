@@ -19,6 +19,14 @@ import (
 "github.com/bytezora/recon-x/internal/vulns"
 "github.com/bytezora/recon-x/internal/waf"
 "github.com/bytezora/recon-x/internal/whois"
+"github.com/bytezora/recon-x/internal/asn"
+"github.com/bytezora/recon-x/internal/bypass"
+"github.com/bytezora/recon-x/internal/cors"
+"github.com/bytezora/recon-x/internal/emailsec"
+"github.com/bytezora/recon-x/internal/favicon"
+"github.com/bytezora/recon-x/internal/graphql"
+"github.com/bytezora/recon-x/internal/takeover"
+"github.com/bytezora/recon-x/internal/vhost"
 )
 
 type Data struct {
@@ -38,6 +46,14 @@ Redirects   []openredirect.Result
 AXFR        []axfr.Result
 WHOIS       *whois.Result
 Screenshots []screenshot.Result
+Takeover  []takeover.Result
+CORS      []cors.Result
+Bypass    []bypass.Result
+VHosts    []vhost.Result
+Favicons  []favicon.Result
+ASN       []asn.Result
+GraphQL   []graphql.Result
+EmailSec  *emailsec.Result
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -248,6 +264,38 @@ footer{
   <div class="card" onclick="show('screenshots',this)">
     <div class="num">{{len .Screenshots}}</div>
     <div class="label">screens</div>
+  </div>
+  <div class="card" onclick="show('takeover',this)">
+    <div class="num">{{len .Takeover}}</div>
+    <div class="label">takeover</div>
+  </div>
+  <div class="card" onclick="show('cors',this)">
+    <div class="num">{{len .CORS}}</div>
+    <div class="label">cors</div>
+  </div>
+  <div class="card" onclick="show('bypass',this)">
+    <div class="num">{{len .Bypass}}</div>
+    <div class="label">403 bypass</div>
+  </div>
+  <div class="card" onclick="show('vhosts',this)">
+    <div class="num">{{len .VHosts}}</div>
+    <div class="label">vhosts</div>
+  </div>
+  <div class="card" onclick="show('favicons',this)">
+    <div class="num">{{len .Favicons}}</div>
+    <div class="label">favicons</div>
+  </div>
+  <div class="card" onclick="show('asn',this)">
+    <div class="num">{{len .ASN}}</div>
+    <div class="label">asn</div>
+  </div>
+  <div class="card" onclick="show('graphql',this)">
+    <div class="num">{{len .GraphQL}}</div>
+    <div class="label">graphql</div>
+  </div>
+  <div class="card" onclick="show('emailsec',this)">
+    <div class="num">{{if .EmailSec}}1{{else}}0{{end}}</div>
+    <div class="label">email sec</div>
   </div>
 </div>
 
@@ -568,9 +616,168 @@ footer{
     {{else}}<p class="empty">[ no screenshots — headless browser not found ]</p>{{end}}
   </div>
 
+  <div id="tab-takeover" class="tab-content">
+    <h2>Subdomain Takeover</h2>
+    {{if .Takeover}}
+    <table>
+      <thead><tr><th>#</th><th>Subdomain</th><th>CNAME</th><th>Service</th><th>Vulnerable</th></tr></thead>
+      <tbody>
+      {{range $i,$t := .Takeover}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td>{{$t.Subdomain}}</td>
+        <td class="mono">{{$t.CNAME}}</td>
+        <td><span class="tag">{{$t.Service}}</span></td>
+        <td>{{if $t.Vulnerable}}<span class="tag tag-alert">VULNERABLE</span>{{else}}<span class="tag">safe</span>{{end}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no subdomain takeover candidates found ]</p>{{end}}
+  </div>
+
+  <div id="tab-cors" class="tab-content">
+    <h2>CORS Misconfiguration</h2>
+    {{if .CORS}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Origin</th><th>ACAO</th><th>ACAC</th></tr></thead>
+      <tbody>
+      {{range $i,$c := .CORS}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td><a href="{{$c.URL}}" target="_blank">{{$c.URL}}</a></td>
+        <td class="mono">{{$c.Origin}}</td>
+        <td class="mono">{{$c.ACAO}}</td>
+        <td class="mono">{{$c.ACAC}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no CORS issues found ]</p>{{end}}
+  </div>
+
+  <div id="tab-bypass" class="tab-content">
+    <h2>403 Bypass</h2>
+    {{if .Bypass}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Bypass URL</th><th>Technique</th><th>Status</th><th>Bypassed</th></tr></thead>
+      <tbody>
+      {{range $i,$b := .Bypass}}
+      {{if $b.Bypassed}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$b.URL}}</td>
+        <td class="mono">{{$b.BypassURL}}</td>
+        <td><span class="tag tag-hi">{{$b.Technique}}</span></td>
+        <td class="mono">{{$b.StatusCode}}</td>
+        <td><span class="tag tag-alert">BYPASSED</span></td>
+      </tr>
+      {{end}}
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no 403 bypasses found ]</p>{{end}}
+  </div>
+
+  <div id="tab-vhosts" class="tab-content">
+    <h2>Virtual Host Discovery</h2>
+    {{if .VHosts}}
+    <table>
+      <thead><tr><th>#</th><th>IP</th><th>VHost</th><th>Status</th><th>Length</th></tr></thead>
+      <tbody>
+      {{range $i,$v := .VHosts}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$v.IP}}</td>
+        <td style="color:var(--hi)">{{$v.VHost}}</td>
+        <td class="mono">{{$v.Status}}</td>
+        <td class="mono">{{$v.Length}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no virtual hosts discovered ]</p>{{end}}
+  </div>
+
+  <div id="tab-favicons" class="tab-content">
+    <h2>Favicon Hash (Shodan MurmurHash3)</h2>
+    {{if .Favicons}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>MurmurHash3</th></tr></thead>
+      <tbody>
+      {{range $i,$f := .Favicons}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td><a href="{{$f.URL}}" target="_blank">{{$f.URL}}</a></td>
+        <td class="mono">{{$f.Hash}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no favicons found ]</p>{{end}}
+  </div>
+
+  <div id="tab-asn" class="tab-content">
+    <h2>ASN Lookup</h2>
+    {{if .ASN}}
+    <table>
+      <thead><tr><th>#</th><th>IP</th><th>ASN</th><th>BGP Prefix</th><th>Country</th><th>Org</th></tr></thead>
+      <tbody>
+      {{range $i,$a := .ASN}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$a.IP}}</td>
+        <td><span class="tag tag-hi">{{$a.ASN}}</span></td>
+        <td class="mono">{{$a.BGPPrefix}}</td>
+        <td class="mono">{{$a.Country}}</td>
+        <td class="mono">{{$a.Org}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no ASN data ]</p>{{end}}
+  </div>
+
+  <div id="tab-graphql" class="tab-content">
+    <h2>GraphQL Endpoints</h2>
+    {{if .GraphQL}}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Endpoint</th><th>Introspection</th><th>Types</th></tr></thead>
+      <tbody>
+      {{range $i,$g := .GraphQL}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$g.URL}}</td>
+        <td><a href="{{$g.Endpoint}}" target="_blank">{{$g.Endpoint}}</a></td>
+        <td>{{if $g.Introspection}}<span class="tag tag-alert">ENABLED</span>{{else}}<span class="tag">disabled</span>{{end}}</td>
+        <td>{{range $g.Types}}<span class="tag">{{.}}</span>{{end}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no GraphQL endpoints found ]</p>{{end}}
+  </div>
+
+  <div id="tab-emailsec" class="tab-content">
+    <h2>Email Security (SPF / DMARC / DKIM)</h2>
+    {{if .EmailSec}}
+    <table>
+      <tbody>
+        <tr><td class="mono" style="width:160px;color:var(--dim)">Domain</td><td class="mono">{{.EmailSec.Domain}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">SPF</td><td class="mono">{{.EmailSec.SPF}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">SPF Strict</td><td class="mono">{{.EmailSec.SPFStrict}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">DMARC</td><td class="mono">{{.EmailSec.DMARC}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">DMARC Policy</td><td class="mono">{{.EmailSec.DMARCPolicy}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">DKIM</td><td class="mono">{{.EmailSec.DKIM}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Spoofable</td><td class="mono">{{if .EmailSec.Spoofable}}<span class="tag tag-alert">YES</span>{{else}}<span class="tag tag-hi">NO</span>{{end}}</td></tr>
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ email security check failed ]</p>{{end}}
+  </div>
+
 </div>
 
-<footer>recon-x v1.3.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
+<footer>recon-x v1.4.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
 
 <script>
 function show(tab, card) {
@@ -599,6 +806,14 @@ redir  []openredirect.Result,
 axfrr  []axfr.Result,
 who    *whois.Result,
 shots  []screenshot.Result,
+tkover  []takeover.Result,
+corsR   []cors.Result,
+bypassR []bypass.Result,
+vhosts  []vhost.Result,
+favicons []favicon.Result,
+asnR    []asn.Result,
+gqlR    []graphql.Result,
+emailR  *emailsec.Result,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -625,5 +840,13 @@ Redirects:   redir,
 AXFR:        axfrr,
 WHOIS:       who,
 Screenshots: shots,
+Takeover:  tkover,
+CORS:      corsR,
+Bypass:    bypassR,
+VHosts:    vhosts,
+Favicons:  favicons,
+ASN:       asnR,
+GraphQL:   gqlR,
+EmailSec:  emailR,
 })
 }

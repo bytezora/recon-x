@@ -19,6 +19,14 @@ import (
 	"github.com/bytezora/recon-x/internal/vulns"
 	"github.com/bytezora/recon-x/internal/waf"
 	"github.com/bytezora/recon-x/internal/whois"
+	"github.com/bytezora/recon-x/internal/asn"
+	"github.com/bytezora/recon-x/internal/bypass"
+	"github.com/bytezora/recon-x/internal/cors"
+	"github.com/bytezora/recon-x/internal/emailsec"
+	"github.com/bytezora/recon-x/internal/favicon"
+	"github.com/bytezora/recon-x/internal/graphql"
+	"github.com/bytezora/recon-x/internal/takeover"
+	"github.com/bytezora/recon-x/internal/vhost"
 )
 
 type Report struct {
@@ -38,6 +46,14 @@ type Report struct {
 	AXFR        []axfr.Result        `json:"axfr"`
 	WHOIS       *whois.Result        `json:"whois,omitempty"`
 	Screenshots []screenshot.Result  `json:"screenshots"`
+	Takeover  []takeover.Result  `json:"takeover"`
+	CORS      []cors.Result      `json:"cors"`
+	Bypass    []bypass.Result    `json:"bypass"`
+	VHosts    []vhost.Result     `json:"vhosts"`
+	Favicons  []favicon.Result   `json:"favicons"`
+	ASN       []asn.Result       `json:"asn"`
+	GraphQL   []graphql.Result   `json:"graphql"`
+	EmailSec  *emailsec.Result   `json:"email_security,omitempty"`
 }
 
 func WriteJSON(
@@ -56,6 +72,14 @@ func WriteJSON(
 	axfrr []axfr.Result,
 	who   *whois.Result,
 	shots []screenshot.Result,
+	tkover   []takeover.Result,
+	corsR    []cors.Result,
+	bypassR  []bypass.Result,
+	vhosts   []vhost.Result,
+	favicons []favicon.Result,
+	asnR     []asn.Result,
+	gqlR     []graphql.Result,
+	emailR   *emailsec.Result,
 ) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -82,5 +106,13 @@ func WriteJSON(
 		AXFR:        axfrr,
 		WHOIS:       who,
 		Screenshots: shots,
+		Takeover:  tkover,
+		CORS:      corsR,
+		Bypass:    bypassR,
+		VHosts:    vhosts,
+		Favicons:  favicons,
+		ASN:       asnR,
+		GraphQL:   gqlR,
+		EmailSec:  emailR,
 	})
 }

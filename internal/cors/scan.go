@@ -1,0 +1,109 @@
+package cors
+
+import (
+	"crypto/tls"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+type Result struct {
+	URL        string `json:"url"`
+	Origin     string `json:"origin"`
+	ACAO       string `json:"acao"`
+	ACAC       string `json:"acac"`
+	Vulnerable bool   `json:"vulnerable"`
+}
+
+var client = &http.Client{
+	Timeout: 8 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 1 {
+			return http.ErrUseLastResponse
+		}
+		return nil
+	},
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+}
+
+func Scan(targets []string, threads int, onFound func(Result)) []Result {
+	var (
+		mu      sync.Mutex
+		results []Result
+		wg      sync.WaitGroup
+		sem     = make(chan struct{}, threads)
+	)
+	for _, t := range targets {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(target string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			for _, r := range scanTarget(target) {
+				mu.Lock()
+				results = append(results, r)
+				mu.Unlock()
+				if onFound != nil {
+					onFound(r)
+				}
+			}
+		}(t)
+	}
+	wg.Wait()
+	return results
+}
+
+func scanTarget(target string) []Result {
+	origins := []string{
+		"https://evil.com",
+		"null",
+		evilPrefix(target),
+	}
+	var results []Result
+	for _, origin := range origins {
+		req, err := http.NewRequest("GET", target, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Origin", origin)
+		resp, err := client.Do(req)
+		if err != nil {
+			continue
+		}
+		resp.Body.Close()
+		acao := resp.Header.Get("Access-Control-Allow-Origin")
+		acac := resp.Header.Get("Access-Control-Allow-Credentials")
+		if acao == "" {
+			continue
+		}
+		vuln := false
+		if (acao == origin || acao == "null") && origin == "null" {
+			vuln = true
+		} else if acao == origin {
+			vuln = true
+		} else if acao == "*" && acac == "true" {
+			vuln = true
+		}
+		if vuln {
+			results = append(results, Result{
+				URL:        target,
+				Origin:     origin,
+				ACAO:       acao,
+				ACAC:       acac,
+				Vulnerable: true,
+			})
+		}
+	}
+	return results
+}
+
+func evilPrefix(target string) string {
+	target = strings.TrimPrefix(target, "https://")
+	target = strings.TrimPrefix(target, "http://")
+	parts := strings.SplitN(target, "/", 2)
+	host := parts[0]
+	return "https://evil" + host
+}
