@@ -58,6 +58,12 @@ recon-x -target example.com -no-passive -ports 80,443,8080,8443
 
 ---
 
+## Terminal UI
+
+![Terminal](docs/assets/terminal.png)
+
+---
+
 ## Report
 
 Self-contained HTML, Lucida Console, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets.
