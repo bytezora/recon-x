@@ -62,6 +62,14 @@ recon-x -target example.com -github-token ghp_xxxx
 11. DNS zone transfer (AXFR) → full zone leak attempt
 12. WHOIS lookup → registrar, org, country, dates
 13. HTTP screenshots → headless browser, embedded in report
+14. Subdomain takeover → CNAME dangling DNS check
+15. CORS scan → origin reflection, wildcard+credentials
+16. 403 bypass → path tricks, header injection
+17. Virtual host discovery → Host header bruteforce
+18. Favicon hash → Shodan MurmurHash3 fingerprint
+19. ASN lookup → BGP prefix, org, country
+20. GraphQL probe → endpoint discovery, introspection dump
+21. Email security → SPF / DMARC / DKIM, spoofability
     → self-contained HTML report + optional JSON
 ```
 
@@ -75,7 +83,7 @@ recon-x -target example.com -github-token ghp_xxxx
 
 ## Report
 
-Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots.
+Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots, takeover, CORS, 403 bypass, vhosts, favicon, ASN, GraphQL, email security.
 
 ![Report](assets/report.png)
 
