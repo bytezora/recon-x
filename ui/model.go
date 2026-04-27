@@ -12,18 +12,15 @@ import (
 var (
 	stylePurple = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
 	styleGreen  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF87")).Bold(true)
-	styleYellow = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA502"))
+	styleYellow = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA502")).Bold(true)
 	styleCyan   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00B4D8")).Bold(true)
 	styleMuted  = lipgloss.NewStyle().Foreground(lipgloss.Color("#8B949E"))
+	styleWhite  = lipgloss.NewStyle().Foreground(lipgloss.Color("#E6EDF3")).Bold(true)
 	styleBox    = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#30363D")).
 			Padding(0, 1)
-	styleHeader = lipgloss.NewStyle().
-			Background(lipgloss.Color("#161B22")).
-			Foreground(lipgloss.Color("#7C3AED")).
-			Bold(true).
-			Padding(0, 2)
+	styleColLeft = lipgloss.NewStyle().Width(52)
 )
 
 type ItemMsg struct {
@@ -32,7 +29,10 @@ type ItemMsg struct {
 }
 
 type StepStartMsg int
-type StepDoneMsg struct{ Step int; Count int }
+type StepDoneMsg struct {
+	Step  int
+	Count int
+}
 type DoneMsg struct{}
 
 type stepState int
@@ -44,7 +44,8 @@ const (
 )
 
 type step struct {
-	label string
+	name  string
+	desc  string
 	state stepState
 	count int
 }
@@ -68,32 +69,32 @@ func New(target string) Model {
 	return Model{
 		target: target,
 		steps: []step{
-			{label: "passive      crt.sh + certspotter + alienvault"},
-			{label: "subdomain    dns brute-force"},
-			{label: "port         tcp scan + banner grab"},
-			{label: "http         fingerprint + waf + cve match"},
-			{label: "dir          path brute-force"},
-			{label: "js           endpoint & secret extraction"},
-			{label: "github       code search dorking"},
-			{label: "buckets      s3 / gcs / azure exposure"},
-			{label: "tls          cert expiry + cipher check"},
-			{label: "redirect     open redirect (22 params)"},
-			{label: "axfr         dns zone transfer"},
-			{label: "whois        registrar + org lookup"},
-			{label: "screenshot   headless capture"},
-			{label: "takeover     dangling cname check"},
-			{label: "cors         origin reflection"},
-			{label: "bypass       403 path + header tricks"},
-			{label: "vhost        host header brute-force"},
-			{label: "favicon      murmurhash3 fingerprint"},
-			{label: "asn          bgp prefix lookup"},
-			{label: "graphql      introspection probe"},
-			{label: "email        spf / dmarc / dkim"},
-			{label: "admin        panel path discovery"},
-			{label: "sqli         error-based + time-based"},
-			{label: "creds        default credential check"},
-			{label: "ratelimit    header detection"},
-			{label: "templates    54 built-in + custom yaml"},
+			{name: "passive", desc: "crt.sh + certspotter + alienvault"},
+			{name: "subdomain", desc: "dns brute-force"},
+			{name: "port", desc: "tcp scan + banner grab"},
+			{name: "http", desc: "fingerprint + waf + cve match"},
+			{name: "dir", desc: "path brute-force"},
+			{name: "js", desc: "endpoint & secret extraction"},
+			{name: "github", desc: "code search dorking"},
+			{name: "buckets", desc: "s3 / gcs / azure exposure"},
+			{name: "tls", desc: "cert expiry + cipher check"},
+			{name: "redirect", desc: "open redirect (22 params)"},
+			{name: "axfr", desc: "dns zone transfer"},
+			{name: "whois", desc: "registrar + org lookup"},
+			{name: "screenshot", desc: "headless capture"},
+			{name: "takeover", desc: "dangling cname check"},
+			{name: "cors", desc: "origin reflection"},
+			{name: "bypass", desc: "403 path + header tricks"},
+			{name: "vhost", desc: "host header brute-force"},
+			{name: "favicon", desc: "murmurhash3 fingerprint"},
+			{name: "asn", desc: "bgp prefix lookup"},
+			{name: "graphql", desc: "introspection probe"},
+			{name: "email", desc: "spf / dmarc / dkim"},
+			{name: "admin", desc: "panel path discovery"},
+			{name: "sqli", desc: "error-based + time-based"},
+			{name: "creds", desc: "default credential check"},
+			{name: "ratelimit", desc: "header detection"},
+			{name: "templates", desc: "54 built-in + custom yaml"},
 		},
 		spinner: sp,
 		width:   80,
@@ -151,38 +152,28 @@ func (m Model) View() string {
 	var b strings.Builder
 
 	b.WriteString("\n")
-	b.WriteString(styleHeader.Render(
-		fmt.Sprintf(" ◈ recon-x  ─  %s ", styleYellow.Render(m.target)),
-	))
+	b.WriteString(
+		"  " +
+			stylePurple.Render("◆") + " " +
+			styleWhite.Render("recon-x") +
+			styleMuted.Render(" — ") +
+			styleYellow.Render(m.target),
+	)
 	b.WriteString("\n\n")
 
-	cols := 2
 	total := len(m.steps)
 	half := (total + 1) / 2
 
 	for i := 0; i < half; i++ {
-		left := m.steps[i]
-		leftIcon, leftLabel := stepDisplay(left, i, m.spinner)
-		leftCount := ""
-		if left.state == stepDone {
-			leftCount = styleMuted.Render(fmt.Sprintf(" [%d]", left.count))
-		}
-
-		line := fmt.Sprintf("  %s  %02d  %s%s", leftIcon, i+1, leftLabel, leftCount)
+		leftLine := renderStep(m.steps[i], i, m.spinner)
+		left := styleColLeft.Render(leftLine)
 
 		j := i + half
 		if j < total {
-			right := m.steps[j]
-			rightIcon, rightLabel := stepDisplay(right, j, m.spinner)
-			rightCount := ""
-			if right.state == stepDone {
-				rightCount = styleMuted.Render(fmt.Sprintf(" [%d]", right.count))
-			}
-			rightPart := fmt.Sprintf("  %s  %02d  %s%s", rightIcon, j+1, rightLabel, rightCount)
-			_ = cols
-			b.WriteString(fmt.Sprintf("%-54s%s\n", line, rightPart))
+			rightLine := renderStep(m.steps[j], j, m.spinner)
+			b.WriteString("  " + left + "  " + rightLine + "\n")
 		} else {
-			b.WriteString(line + "\n")
+			b.WriteString("  " + leftLine + "\n")
 		}
 	}
 
@@ -193,8 +184,7 @@ func (m Model) View() string {
 		for i, item := range m.items {
 			lines[i] = "  " + item
 		}
-		content := strings.Join(lines, "\n")
-		b.WriteString(styleBox.Render(content))
+		b.WriteString(styleBox.Render(strings.Join(lines, "\n")))
 		b.WriteString("\n")
 	}
 
@@ -207,14 +197,25 @@ func (m Model) View() string {
 	return b.String()
 }
 
-func stepDisplay(s step, _ int, sp spinner.Model) (icon, label string) {
-	switch s.state {
-	case stepPending:
-		return styleMuted.Render("·"), styleMuted.Render(s.label)
-	case stepRunning:
-		return sp.View(), styleCyan.Render(s.label)
-	case stepDone:
-		return styleGreen.Render("✓"), styleGreen.Render(s.label)
+func renderStep(s step, idx int, sp spinner.Model) string {
+	num := styleCyan.Render(fmt.Sprintf("%02d", idx+1))
+	cnt := ""
+	if s.state == stepDone && s.count > 0 {
+		cnt = styleMuted.Render(fmt.Sprintf(" [%d]", s.count))
 	}
-	return styleMuted.Render("·"), styleMuted.Render(s.label)
+
+	switch s.state {
+	case stepRunning:
+		return sp.View() + "  " + num + "  " +
+			styleCyan.Render(s.name) + "  " +
+			styleCyan.Render(s.desc)
+	case stepDone:
+		return styleGreen.Render("✓") + "  " + num + "  " +
+			styleGreen.Render(s.name) + "  " +
+			styleMuted.Render(s.desc) + cnt
+	default:
+		return styleMuted.Render("·") + "  " + num + "  " +
+			styleYellow.Render(s.name) + "  " +
+			styleMuted.Render(s.desc)
+	}
 }
