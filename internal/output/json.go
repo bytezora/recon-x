@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/buckets"
 	"github.com/bytezora/recon-x/internal/dirbust"
+	"github.com/bytezora/recon-x/internal/ghsearch"
 	"github.com/bytezora/recon-x/internal/httpcheck"
 	"github.com/bytezora/recon-x/internal/jsscan"
 	"github.com/bytezora/recon-x/internal/portscan"
@@ -26,6 +28,8 @@ type Report struct {
 	WAFs        []waf.Result       `json:"wafs"`
 	DirHits     []dirbust.Hit      `json:"dir_hits"`
 	JSFindings  []jsscan.Finding   `json:"js_findings"`
+	GHFindings  []ghsearch.Finding `json:"github_findings"`
+	Buckets     []buckets.Result   `json:"buckets"`
 }
 
 // WriteJSON serialises all scan results to a JSON file at path.
@@ -38,6 +42,8 @@ func WriteJSON(
 	wafs  []waf.Result,
 	dirs  []dirbust.Hit,
 	jsf   []jsscan.Finding,
+	ghf  []ghsearch.Finding,
+	bkts []buckets.Result,
 ) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -57,6 +63,8 @@ func WriteJSON(
 		WAFs:        wafs,
 		DirHits:     dirs,
 		JSFindings:  jsf,
+		GHFindings:  ghf,
+		Buckets:     bkts,
 	})
 }
 

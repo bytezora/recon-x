@@ -11,8 +11,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/bytezora/recon-x/internal/buckets"
 	"github.com/bytezora/recon-x/internal/crtsh"
 	"github.com/bytezora/recon-x/internal/dirbust"
+	"github.com/bytezora/recon-x/internal/ghsearch"
 	"github.com/bytezora/recon-x/internal/httpcheck"
 	"github.com/bytezora/recon-x/internal/jsscan"
 	"github.com/bytezora/recon-x/internal/output"
@@ -54,6 +56,7 @@ type Config struct {
 	Ports       string
 	Threads     int
 	NoPassive   bool
+	GitHubToken string
 }
 
 func main() {
@@ -69,19 +72,22 @@ func main() {
 	prog := tea.NewProgram(m, tea.WithAltScreen())
 
 	var (
-		finalSubs   []subdomain.Result
-		finalPorts  []portscan.Result
-		finalHTTP   []httpcheck.Result
-		finalVulns  []vulns.Match
-		finalWAFs   []waf.Result
-		finalDirs   []dirbust.Hit
-		finalJS     []jsscan.Finding
+		finalSubs    []subdomain.Result
+		finalPorts   []portscan.Result
+		finalHTTP    []httpcheck.Result
+		finalVulns   []vulns.Match
+		finalWAFs    []waf.Result
+		finalDirs    []dirbust.Hit
+		finalJS      []jsscan.Finding
+		finalGH      []ghsearch.Finding
+		finalBuckets []buckets.Result
 	)
 
 	go func() {
 		runScans(cfg, prog,
 			&finalSubs, &finalPorts, &finalHTTP,
 			&finalVulns, &finalWAFs, &finalDirs, &finalJS,
+			&finalGH, &finalBuckets,
 		)
 		prog.Send(ui.DoneMsg{})
 	}()
@@ -92,7 +98,7 @@ func main() {
 	}
 
 	if err := report.Generate(cfg.Target, finalSubs, finalPorts, finalHTTP,
-		finalVulns, finalWAFs, finalDirs, finalJS, cfg.Output); err != nil {
+		finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets, cfg.Output); err != nil {
 		fail("report error: %v", err)
 		os.Exit(1)
 	}
@@ -100,7 +106,7 @@ func main() {
 
 	if cfg.JSON != "" {
 		if err := output.WriteJSON(cfg.JSON, cfg.Target, finalSubs, finalPorts, finalHTTP,
-			finalVulns, finalWAFs, finalDirs, finalJS); err != nil {
+			finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets); err != nil {
 			fail("JSON error: %v", err)
 		} else {
 			success("JSON output → %s", styleYellow.Render(cfg.JSON))
@@ -122,6 +128,8 @@ func runScans(
 	wafs  *[]waf.Result,
 	dirs  *[]dirbust.Hit,
 	jsf   *[]jsscan.Finding,
+	ghf  *[]ghsearch.Finding,
+	bkts *[]buckets.Result,
 ) {
 	prog.Send(ui.StepStartMsg(0))
 	var passiveNames []string
@@ -253,6 +261,30 @@ func runScans(
 		})
 	})
 	prog.Send(ui.StepDoneMsg{Step: 5, Count: len(*jsf)})
+
+	// Step 6: GitHub dorking
+	prog.Send(ui.StepStartMsg(6))
+	*ghf = ghsearch.Search(cfg.Target, cfg.GitHubToken, func(f ghsearch.Finding) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleYellow.Render("⚑"),
+			Text: styleMuted.Render(f.Repo) + "  " + styleYellow.Render(f.Keyword) + "  " + styleMuted.Render(f.Path),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 6, Count: len(*ghf)})
+
+	// Step 7: Cloud bucket enumeration
+	prog.Send(ui.StepStartMsg(7))
+	*bkts = buckets.Enum(cfg.Target, cfg.Threads, func(r buckets.Result) {
+		icon := styleMuted.Render("▣")
+		if r.Status == "public" {
+			icon = styleRed.Render("▣")
+		}
+		prog.Send(ui.ItemMsg{
+			Icon: icon,
+			Text: styleYellow.Render(r.Provider) + "  " + styleMuted.Render(r.Bucket) + "  " + styleGreen.Render(r.Status),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 7, Count: len(*bkts)})
 }
 
 func parseFlags() Config {
@@ -264,6 +296,7 @@ func parseFlags() Config {
 	ports       := flag.String("ports",        defaultPorts,  "Comma-separated ports to scan")
 	threads     := flag.Int("threads",         50,            "Number of concurrent goroutines")
 	noPassive   := flag.Bool("no-passive",     false,         "Skip crt.sh passive recon")
+	githubToken := flag.String("github-token",  "",            "GitHub personal access token for dorking (optional)")
 	ver         := flag.Bool("version",        false,         "Print version and exit")
 	dbHash      := flag.Bool("db-hash",        false,         "Print CVE database fingerprint and exit (for stamping integrity.go)")
 	flag.Parse()
@@ -293,6 +326,7 @@ func parseFlags() Config {
 		Ports:       *ports,
 		Threads:     *threads,
 		NoPassive:   *noPassive,
+		GitHubToken: *githubToken,
 	}
 }
 

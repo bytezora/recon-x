@@ -77,6 +77,8 @@ func New(target string) Model {
 			{label: "HTTP fingerprint (WAF detect)"},
 			{label: "Directory brute  (path enum)"},
 			{label: "JS scraping      (secrets)"},
+			{label: "GitHub dorking   (secrets)"},
+			{label: "Cloud buckets    (S3/GCS/Azure)"},
 		},
 		spinner: sp,
 		width:   80,

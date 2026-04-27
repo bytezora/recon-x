@@ -5,7 +5,9 @@ import (
 "os"
 "time"
 
+"github.com/bytezora/recon-x/internal/buckets"
 "github.com/bytezora/recon-x/internal/dirbust"
+"github.com/bytezora/recon-x/internal/ghsearch"
 "github.com/bytezora/recon-x/internal/httpcheck"
 "github.com/bytezora/recon-x/internal/jsscan"
 "github.com/bytezora/recon-x/internal/portscan"
@@ -24,6 +26,8 @@ Vulns       []vulns.Match
 WAFs        []waf.Result
 DirHits     []dirbust.Hit
 JSFindings  []jsscan.Finding
+GHFindings  []ghsearch.Finding
+Buckets     []buckets.Result
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -207,6 +211,14 @@ footer{
     <div class="num">{{len .JSFindings}}</div>
     <div class="label">js finds</div>
   </div>
+  <div class="card" onclick="show('github',this)">
+    <div class="num">{{len .GHFindings}}</div>
+    <div class="label">github leaks</div>
+  </div>
+  <div class="card" onclick="show('buckets',this)">
+    <div class="num">{{len .Buckets}}</div>
+    <div class="label">buckets</div>
+  </div>
 </div>
 
 <div class="tabs-wrap">
@@ -377,6 +389,50 @@ footer{
     {{else}}<p class="empty">[ no js findings ]</p>{{end}}
   </div>
 
+  <div id="tab-github" class="tab-content">
+    <h2>GitHub Dorking — Exposed Secrets</h2>
+    {{if .GHFindings}}
+    <table>
+      <thead><tr><th>#</th><th>Keyword</th><th>Repository</th><th>Path</th><th>URL</th></tr></thead>
+      <tbody>
+      {{range $i,$g := .GHFindings}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td><span class="tag tag-alert">{{$g.Keyword}}</span></td>
+        <td class="mono">{{$g.Repo}}</td>
+        <td class="mono">{{$g.Path}}</td>
+        <td class="mono"><a href="{{$g.URL}}" target="_blank">view</a></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no github findings — pass -github-token for better results ]</p>{{end}}
+  </div>
+
+  <div id="tab-buckets" class="tab-content">
+    <h2>Cloud Buckets — S3 / GCS / Azure</h2>
+    {{if .Buckets}}
+    <table>
+      <thead><tr><th>#</th><th>Provider</th><th>Bucket</th><th>Status</th><th>Code</th><th>URL</th></tr></thead>
+      <tbody>
+      {{range $i,$b := .Buckets}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td><span class="tag tag-hi">{{$b.Provider}}</span></td>
+        <td class="mono">{{$b.Bucket}}</td>
+        <td>
+          {{if eq $b.Status "public"}}<span class="tag tag-alert">public</span>
+          {{else}}<span class="tag">exists</span>{{end}}
+        </td>
+        <td class="mono">{{$b.Code}}</td>
+        <td class="mono"><a href="{{$b.URL}}" target="_blank">{{$b.URL}}</a></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no exposed buckets found ]</p>{{end}}
+  </div>
+
 </div>
 
 <footer>recon-x v1.2.1 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
@@ -401,6 +457,8 @@ vs     []vulns.Match,
 wafs   []waf.Result,
 dirs   []dirbust.Hit,
 jsf    []jsscan.Finding,
+ghf   []ghsearch.Finding,
+bkts  []buckets.Result,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -420,5 +478,7 @@ Vulns:       vs,
 WAFs:        wafs,
 DirHits:     dirs,
 JSFindings:  jsf,
+GHFindings:  ghf,
+Buckets:     bkts,
 })
 }
