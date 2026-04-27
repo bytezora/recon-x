@@ -197,16 +197,46 @@ a:hover{text-decoration:underline}
 .empty{color:var(--dim);padding:1rem 0;font-size:.78rem}
 .mono{font-family:var(--font);font-size:.72rem;color:var(--dim)}
 
-/* ── footer ── */
-footer{
-  text-align:center;
-  padding:.7rem;
-  color:var(--dim);
-  font-size:.68rem;
-  border-top:1px solid var(--line);
-  flex-shrink:0;
-  letter-spacing:1px;
+/* ── search bar ── */
+.search-wrap{padding:.5rem 2rem .4rem;border-bottom:1px solid var(--line);background:var(--bg2);flex-shrink:0;display:none}
+.search-wrap.visible{display:block}
+.search-input{
+  background:var(--bg);
+  border:1px solid var(--line);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:.78rem;
+  padding:.3rem .7rem;
+  width:100%;
+  max-width:400px;
+  outline:none;
 }
+.search-input:focus{border-color:var(--hi)}
+
+/* ── critical bar ── */
+.crit-bar{
+  background:var(--bg2);
+  border-bottom:1px solid var(--line);
+  padding:.4rem 2rem;
+  font-size:.72rem;
+  color:var(--dim);
+  letter-spacing:1px;
+  flex-shrink:0;
+  display:flex;
+  gap:1.2rem;
+}
+.crit-item{display:flex;align-items:center;gap:.4rem}
+.crit-num{font-weight:700}
+.crit-num.red{color:var(--hi)}
+.crit-num.yellow{color:#c8a000}
+.crit-num.green{color:#00ff87}
+
+/* ── cvss score ── */
+.cvss-crit{color:var(--hi);font-weight:700}
+.cvss-high{color:#c0c0c0;font-weight:700}
+.cvss-med{color:#888}
+.cvss-low{color:var(--dim)}
+
 </style>
 </head>
 <body>
@@ -217,6 +247,20 @@ footer{
   <span class="target">{{.Target}}</span>
   <span class="meta">{{.GeneratedAt}}</span>
 </header>
+
+<div class="crit-bar">
+  <span class="crit-item"><span class="crit-num red">{{len .Vulns}}</span> cve</span>
+  <span class="crit-item"><span class="crit-num {{if .SQLi}}red{{else}}green{{end}}">{{len .SQLi}}</span> sqli</span>
+  <span class="crit-item"><span class="crit-num {{if .Takeover}}red{{else}}green{{end}}">{{len .Takeover}}</span> takeover</span>
+  <span class="crit-item"><span class="crit-num {{if .CORS}}yellow{{else}}green{{end}}">{{len .CORS}}</span> cors</span>
+  <span class="crit-item"><span class="crit-num {{if .DefaultCreds}}red{{else}}green{{end}}">{{len .DefaultCreds}}</span> def-creds</span>
+  <span class="crit-item"><span class="crit-num">{{len .Subdomains}}</span> subdomains</span>
+  <span class="crit-item"><span class="crit-num">{{len .Ports}}</span> open ports</span>
+</div>
+
+<div class="search-wrap" id="search-wrap">
+  <input class="search-input" id="search-input" type="text" placeholder="filter rows..." oninput="filterTable(this.value)"/>
+</div>
 
 <div class="summary">
   <div class="card active" onclick="show('subdomains',this)">
@@ -408,7 +452,12 @@ footer{
         <td>{{$v.Host}}</td>
         <td>{{if $v.Port}}<span class="tag tag-hi">{{$v.Port}}</span>{{else}}<span class="tag">HTTP</span>{{end}}</td>
         <td><a href="{{$v.Link}}" target="_blank">{{$v.CVE}}</a></td>
-        <td class="mono">{{printf "%.1f" $v.CVSS}}</td>
+        <td>
+          {{if ge $v.CVSS 9.0}}<span class="cvss-crit">{{printf "%.1f" $v.CVSS}}</span>
+          {{else if ge $v.CVSS 7.0}}<span class="cvss-high">{{printf "%.1f" $v.CVSS}}</span>
+          {{else if ge $v.CVSS 4.0}}<span class="cvss-med">{{printf "%.1f" $v.CVSS}}</span>
+          {{else}}<span class="cvss-low">{{printf "%.1f" $v.CVSS}}</span>{{end}}
+        </td>
         <td>
           {{if eq $v.Severity "CRITICAL"}}<span class="sev-crit">CRITICAL</span>
           {{else if eq $v.Severity "HIGH"}}<span class="sev-high">HIGH</span>
@@ -914,15 +963,43 @@ footer{
 
 </div>
 
-<footer>recon-x v2.0.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
+<footer>recon-x &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only &nbsp;&middot;&nbsp; findings require manual verification</footer>
 
 <script>
+var currentTab = 'subdomains';
 function show(tab, card) {
   document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active')});
   document.querySelectorAll('.card').forEach(function(el){el.classList.remove('active')});
   document.getElementById('tab-'+tab).classList.add('active');
   card.classList.add('active');
+  currentTab = tab;
+  var wrap = document.getElementById('search-wrap');
+  var input = document.getElementById('search-input');
+  var hasTable = document.querySelector('#tab-'+tab+' table');
+  if(hasTable){wrap.classList.add('visible');}else{wrap.classList.remove('visible');}
+  input.value='';
+  filterTable('');
 }
+function filterTable(q) {
+  var tab = document.getElementById('tab-'+currentTab);
+  if(!tab) return;
+  var rows = tab.querySelectorAll('tbody tr');
+  var lower = q.toLowerCase();
+  rows.forEach(function(row){
+    row.style.display = (lower === '' || row.textContent.toLowerCase().indexOf(lower) > -1) ? '' : 'none';
+  });
+}
+document.addEventListener('keydown', function(e) {
+  if(e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+  if(e.key === 'Escape') { document.getElementById('search-input').blur(); }
+});
+window.onload = function() {
+  var firstCard = document.querySelector('.card');
+  if(firstCard){ var wrap = document.getElementById('search-wrap'); var hasTable = document.querySelector('#tab-subdomains table'); if(hasTable) wrap.classList.add('visible'); }
+};
 </script>
 </body>
 </html>`

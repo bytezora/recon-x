@@ -68,32 +68,32 @@ func New(target string) Model {
 	return Model{
 		target: target,
 		steps: []step{
-			{label: "Passive recon    (crt.sh)"},
-			{label: "DNS brute-force  (wordlist)"},
-			{label: "Port scan        (TCP + CVE)"},
-			{label: "HTTP fingerprint (WAF detect)"},
-			{label: "Directory brute  (path enum)"},
-			{label: "JS scraping      (secrets)"},
-			{label: "GitHub dorking   (secrets)"},
-			{label: "Cloud buckets    (S3/GCS/Azure)"},
-			{label: "TLS analysis     (certs)"},
-			{label: "Open redirect    (params)"},
-			{label: "DNS zone AXFR    (nameservers)"},
-			{label: "WHOIS lookup     (registrar)"},
-			{label: "Screenshots      (headless)"},
-			{label: "Subdomain takeover (CNAME check)"},
-			{label: "CORS scan        (origin reflect)"},
-			{label: "403 bypass       (path/header tricks)"},
-			{label: "Vhost discovery  (Host brute)"},
-			{label: "Favicon hash     (Shodan MurmurHash3)"},
-			{label: "ASN lookup       (IP ranges)"},
-			{label: "GraphQL probe    (introspection)"},
-			{label: "Email security   (SPF/DMARC/DKIM)"},
-			{label: "Admin panel      (path discovery)"},
-			{label: "SQLi detection   (error-based)"},
-			{label: "Default creds    (15 pairs)"},
-			{label: "Rate limit       (header detect)"},
-			{label: "Template scan    (built-in + custom)"},
+			{label: "passive      crt.sh + certspotter + alienvault"},
+			{label: "subdomain    dns brute-force"},
+			{label: "port         tcp scan + banner grab"},
+			{label: "http         fingerprint + waf + cve match"},
+			{label: "dir          path brute-force"},
+			{label: "js           endpoint & secret extraction"},
+			{label: "github       code search dorking"},
+			{label: "buckets      s3 / gcs / azure exposure"},
+			{label: "tls          cert expiry + cipher check"},
+			{label: "redirect     open redirect (22 params)"},
+			{label: "axfr         dns zone transfer"},
+			{label: "whois        registrar + org lookup"},
+			{label: "screenshot   headless capture"},
+			{label: "takeover     dangling cname check"},
+			{label: "cors         origin reflection"},
+			{label: "bypass       403 path + header tricks"},
+			{label: "vhost        host header brute-force"},
+			{label: "favicon      murmurhash3 fingerprint"},
+			{label: "asn          bgp prefix lookup"},
+			{label: "graphql      introspection probe"},
+			{label: "email        spf / dmarc / dkim"},
+			{label: "admin        panel path discovery"},
+			{label: "sqli         error-based + time-based"},
+			{label: "creds        default credential check"},
+			{label: "ratelimit    header detection"},
+			{label: "templates    54 built-in + custom yaml"},
 		},
 		spinner: sp,
 		width:   80,
@@ -150,31 +150,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
+	b.WriteString("\n")
 	b.WriteString(styleHeader.Render(
-		fmt.Sprintf(" recon-x  ·  %s ", styleYellow.Render(m.target)),
+		fmt.Sprintf(" ◈ recon-x  ─  %s ", styleYellow.Render(m.target)),
 	))
 	b.WriteString("\n\n")
 
-	for i, s := range m.steps {
-		var icon, label string
-		switch s.state {
-		case stepPending:
-			icon  = styleMuted.Render("○")
-			label = styleMuted.Render(s.label)
-		case stepRunning:
-			icon  = m.spinner.View()
-			label = styleCyan.Render(s.label)
-		case stepDone:
-			icon  = styleGreen.Render("✓")
-			label = styleGreen.Render(s.label)
+	cols := 2
+	total := len(m.steps)
+	half := (total + 1) / 2
+
+	for i := 0; i < half; i++ {
+		left := m.steps[i]
+		leftIcon, leftLabel := stepDisplay(left, i, m.spinner)
+		leftCount := ""
+		if left.state == stepDone {
+			leftCount = styleMuted.Render(fmt.Sprintf(" [%d]", left.count))
 		}
 
-		count := ""
-		if s.state == stepDone {
-			count = styleMuted.Render(fmt.Sprintf("  %d found", s.count))
-		}
+		line := fmt.Sprintf("  %s  %02d  %s%s", leftIcon, i+1, leftLabel, leftCount)
 
-		b.WriteString(fmt.Sprintf("  %s  %02d. %s%s\n", icon, i+1, label, count))
+		j := i + half
+		if j < total {
+			right := m.steps[j]
+			rightIcon, rightLabel := stepDisplay(right, j, m.spinner)
+			rightCount := ""
+			if right.state == stepDone {
+				rightCount = styleMuted.Render(fmt.Sprintf(" [%d]", right.count))
+			}
+			rightPart := fmt.Sprintf("  %s  %02d  %s%s", rightIcon, j+1, rightLabel, rightCount)
+			_ = cols
+			b.WriteString(fmt.Sprintf("%-54s%s\n", line, rightPart))
+		} else {
+			b.WriteString(line + "\n")
+		}
 	}
 
 	b.WriteString("\n")
@@ -190,10 +199,22 @@ func (m Model) View() string {
 	}
 
 	if m.done {
-		b.WriteString("\n  " + styleGreen.Render("◆  Scan complete") + "\n")
+		b.WriteString("\n  " + styleGreen.Render("◆  done") + "\n")
 	} else {
-		b.WriteString("\n  " + styleMuted.Render("q / ctrl+c to quit") + "\n")
+		b.WriteString("\n  " + styleMuted.Render("ctrl+c to quit") + "\n")
 	}
 
 	return b.String()
+}
+
+func stepDisplay(s step, _ int, sp spinner.Model) (icon, label string) {
+	switch s.state {
+	case stepPending:
+		return styleMuted.Render("·"), styleMuted.Render(s.label)
+	case stepRunning:
+		return sp.View(), styleCyan.Render(s.label)
+	case stepDone:
+		return styleGreen.Render("✓"), styleGreen.Render(s.label)
+	}
+	return styleMuted.Render("·"), styleMuted.Render(s.label)
 }
