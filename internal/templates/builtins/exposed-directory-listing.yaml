@@ -1,0 +1,10 @@
+﻿id: exposed-directory-listing
+name: Directory Listing Enabled
+severity: medium
+tags: [exposure, config]
+request:
+  method: GET
+  path: /
+matchers:
+  - type: word
+    words: ["Index of /", "Directory listing for"]

@@ -1,0 +1,10 @@
+﻿id: exposed-django-debug
+name: Django Debug Admin Login Exposed
+severity: medium
+tags: [exposure, django]
+request:
+  method: GET
+  path: /admin/login/
+matchers:
+  - type: word
+    words: ["csrfmiddlewaretoken", "django", "Django"]

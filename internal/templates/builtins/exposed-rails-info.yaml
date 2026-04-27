@@ -1,0 +1,10 @@
+﻿id: exposed-rails-info
+name: Rails Info Properties Exposed
+severity: medium
+tags: [exposure, rails]
+request:
+  method: GET
+  path: /rails/info/properties
+matchers:
+  - type: word
+    words: ["Rails version", "Ruby version", "RubyGems version"]

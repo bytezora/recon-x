@@ -1,0 +1,10 @@
+﻿id: exposed-mongodb-express
+name: Mongo Express Admin UI Exposed
+severity: high
+tags: [exposure, mongodb]
+request:
+  method: GET
+  path: /db/admin
+matchers:
+  - type: word
+    words: ["mongo-express", "mongo", "MongoDB"]

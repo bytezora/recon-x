@@ -1,0 +1,10 @@
+﻿id: exposed-kubernetes-api
+name: Kubernetes API Exposed
+severity: critical
+tags: [exposure, kubernetes]
+request:
+  method: GET
+  path: /api/v1/namespaces
+matchers:
+  - type: word
+    words: ["items"]

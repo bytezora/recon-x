@@ -1,0 +1,10 @@
+﻿id: exposed-jenkins-creds
+name: Jenkins Credentials Exposed
+severity: critical
+tags: [exposure, jenkins]
+request:
+  method: GET
+  path: /credentials/store/system/domain/_/api/json
+matchers:
+  - type: word
+    words: ["credentials", "secret", "password"]

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/bytezora/recon-x/internal/adminpanel"
+	"github.com/bytezora/recon-x/internal/passive"
 	"github.com/bytezora/recon-x/internal/asn"
 	"github.com/bytezora/recon-x/internal/axfr"
 	"github.com/bytezora/recon-x/internal/buckets"
@@ -133,10 +134,21 @@ func (e *Engine) Run(send func(tea.Msg), stateObj *state.State, stateFile string
 	var passiveNames []string
 	if !stateObj.Done(0) {
 		if !e.cfg.NoPassive {
-			names, err := crtsh.Lookup(e.cfg.Target)
+			crtNames, err := crtsh.Lookup(e.cfg.Target)
 			if err == nil {
-				passiveNames = names
+				passiveNames = append(passiveNames, crtNames...)
 			}
+			moreNames := passive.Gather(e.cfg.Target)
+			passiveNames = append(passiveNames, moreNames...)
+			seen := make(map[string]bool)
+			deduped := passiveNames[:0]
+			for _, n := range passiveNames {
+				if !seen[n] {
+					seen[n] = true
+					deduped = append(deduped, n)
+				}
+			}
+			passiveNames = deduped
 		}
 		stateObj.Mark(0)
 		state.Save(stateFile, stateObj)

@@ -1,0 +1,10 @@
+﻿id: exposed-laravel-horizon
+name: Laravel Horizon Dashboard Exposed
+severity: medium
+tags: [exposure, laravel]
+request:
+  method: GET
+  path: /horizon/api/stats
+matchers:
+  - type: word
+    words: ["horizon", "jobs", "throughput"]

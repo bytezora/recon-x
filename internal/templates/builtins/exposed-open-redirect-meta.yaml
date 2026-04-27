@@ -1,0 +1,10 @@
+﻿id: exposed-open-redirect-meta
+name: Open Redirect via Meta Refresh
+severity: medium
+tags: [exposure, redirect]
+request:
+  method: GET
+  path: /
+matchers:
+  - type: word
+    words: ["<meta http-equiv=""refresh"""]

@@ -1,0 +1,12 @@
+﻿id: exposed-cors-wildcard
+name: CORS Wildcard Misconfiguration
+severity: medium
+tags: [exposure, cors]
+request:
+  method: GET
+  path: /
+  headers:
+    Origin: "https://evil.com"
+matchers:
+  - type: word
+    words: ["Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"]

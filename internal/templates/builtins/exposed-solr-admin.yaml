@@ -1,0 +1,10 @@
+﻿id: exposed-solr-admin
+name: Apache Solr Admin Exposed
+severity: medium
+tags: [exposure, solr]
+request:
+  method: GET
+  path: /solr/admin/cores
+matchers:
+  - type: word
+    words: ["responseHeader", "status", "solr-spec-version"]

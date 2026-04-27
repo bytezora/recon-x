@@ -1,0 +1,10 @@
+﻿id: exposed-jupyter-notebook
+name: Jupyter Notebook API Exposed
+severity: high
+tags: [exposure, jupyter]
+request:
+  method: GET
+  path: /api/kernels
+matchers:
+  - type: word
+    words: ["kernelspec", "kernel_name", "language_info"]

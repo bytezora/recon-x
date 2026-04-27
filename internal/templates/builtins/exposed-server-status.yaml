@@ -1,0 +1,10 @@
+﻿id: exposed-server-status
+name: Apache Server Status Exposed
+severity: medium
+tags: [exposure, apache]
+request:
+  method: GET
+  path: /server-status
+matchers:
+  - type: word
+    words: ["Apache Server Status", "Server uptime", "requests currently being processed"]

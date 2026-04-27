@@ -1,0 +1,10 @@
+﻿id: exposed-vault-ui
+name: HashiCorp Vault UI Exposed
+severity: high
+tags: [exposure, vault]
+request:
+  method: GET
+  path: /ui/vault/init
+matchers:
+  - type: word
+    words: ["vault", "Vault", "hashicorp"]

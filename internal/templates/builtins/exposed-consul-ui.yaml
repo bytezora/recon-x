@@ -1,0 +1,10 @@
+﻿id: exposed-consul-ui
+name: Consul UI Exposed
+severity: medium
+tags: [exposure, consul]
+request:
+  method: GET
+  path: /ui/
+matchers:
+  - type: word
+    words: ["consul", "Consul", "datacenter"]

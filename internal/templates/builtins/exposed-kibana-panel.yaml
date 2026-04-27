@@ -1,0 +1,10 @@
+﻿id: exposed-kibana-panel
+name: Kibana Dashboard Panel Exposed
+severity: high
+tags: [exposure, elk]
+request:
+  method: GET
+  path: /app/kibana
+matchers:
+  - type: word
+    words: ["kibana", "kbn-", "Elastic"]

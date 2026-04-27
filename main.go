@@ -1,6 +1,7 @@
 ﻿package main
 
 import (
+"bufio"
 "flag"
 "fmt"
 "os"
@@ -263,6 +264,15 @@ cfg.JSON = cfg.OutputDir + "/report.json"
 if cfg.SARIF != "" {
 cfg.SARIF = cfg.OutputDir + "/report.sarif"
 }
+}
+}
+
+if cfg.Target == "" {
+stat, _ := os.Stdin.Stat()
+if (stat.Mode() & os.ModeCharDevice) == 0 {
+scanner := bufio.NewScanner(os.Stdin)
+scanner.Scan()
+cfg.Target = strings.TrimSpace(scanner.Text())
 }
 }
 

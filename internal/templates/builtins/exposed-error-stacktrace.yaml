@@ -1,0 +1,10 @@
+﻿id: exposed-error-stacktrace
+name: Error Stack Trace Exposed
+severity: medium
+tags: [exposure, debug]
+request:
+  method: GET
+  path: /error
+matchers:
+  - type: word
+    words: ["at ", "Exception", "Stack trace"]

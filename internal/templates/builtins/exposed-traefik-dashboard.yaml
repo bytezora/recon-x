@@ -1,0 +1,10 @@
+﻿id: exposed-traefik-dashboard
+name: Traefik Dashboard Exposed
+severity: medium
+tags: [exposure, traefik]
+request:
+  method: GET
+  path: /dashboard/
+matchers:
+  - type: word
+    words: ["traefik", "Traefik", "routers"]

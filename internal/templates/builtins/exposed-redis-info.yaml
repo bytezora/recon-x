@@ -1,0 +1,10 @@
+﻿id: exposed-redis-info
+name: Redis Info Exposed
+severity: high
+tags: [exposure, redis]
+request:
+  method: GET
+  path: /redis
+matchers:
+  - type: word
+    words: ["redis_version", "server_name"]

@@ -53,6 +53,8 @@ recon-x -target example.com -github-token ghp_xxxx
 recon-x -target example.com -scope-file scope.txt
 recon-x -target example.com -notify-slack https://hooks.slack.com/...
 recon-x -target example.com -notify-telegram TOKEN@CHATID
+echo "example.com" | recon-x
+cat targets.txt | recon-x -output report.html
 ```
 
 ### Flags

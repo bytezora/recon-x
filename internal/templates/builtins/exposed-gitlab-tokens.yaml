@@ -1,0 +1,10 @@
+﻿id: exposed-gitlab-tokens
+name: GitLab API Token Exposed
+severity: high
+tags: [exposure, gitlab]
+request:
+  method: GET
+  path: /api/v4/user
+matchers:
+  - type: word
+    words: ["username", "email", "is_admin"]

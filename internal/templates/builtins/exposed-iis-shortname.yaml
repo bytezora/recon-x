@@ -1,0 +1,10 @@
+﻿id: exposed-iis-shortname
+name: IIS Short Filename Disclosure
+severity: low
+tags: [exposure, iis]
+request:
+  method: GET
+  path: /~1/*
+matchers:
+  - type: status
+    status: [404]

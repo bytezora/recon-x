@@ -1,0 +1,10 @@
+﻿id: exposed-nginx-status
+name: Nginx Status Exposed
+severity: low
+tags: [exposure, nginx]
+request:
+  method: GET
+  path: /nginx_status
+matchers:
+  - type: word
+    words: ["Active connections", "server accepts handled requests"]

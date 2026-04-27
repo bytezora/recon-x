@@ -1,0 +1,10 @@
+﻿id: exposed-flower-celery
+name: Flower Celery Monitor Exposed
+severity: medium
+tags: [exposure, celery]
+request:
+  method: GET
+  path: /flower/api/workers
+matchers:
+  - type: word
+    words: ["celery", "workers", "tasks"]

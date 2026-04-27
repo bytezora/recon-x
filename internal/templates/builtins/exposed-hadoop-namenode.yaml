@@ -1,0 +1,10 @@
+﻿id: exposed-hadoop-namenode
+name: Hadoop NameNode JMX Exposed
+severity: medium
+tags: [exposure, hadoop]
+request:
+  method: GET
+  path: /jmx
+matchers:
+  - type: word
+    words: ["hadoop", "Hadoop", "NameNode"]

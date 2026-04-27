@@ -1,0 +1,10 @@
+﻿id: exposed-elasticsearch-all
+name: Elasticsearch All Indices Exposed
+severity: high
+tags: [exposure, elasticsearch]
+request:
+  method: GET
+  path: /_all
+matchers:
+  - type: word
+    words: ["indices", "mappings", "settings"]
