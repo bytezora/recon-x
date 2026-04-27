@@ -14,15 +14,7 @@ extraction into a single binary — with a live terminal UI and a clean report o
 
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.2.0-39ff14?style=flat-square)
-
----
-
-## Why I built this
-
-Most recon workflows require running 4–5 separate tools, piping output between them,
-and stitching results together manually. recon-x does all of that in one command
-and produces a clean report you can actually share.
+![Version](https://img.shields.io/badge/version-1.2.1-39ff14?style=flat-square)
 
 ---
 
@@ -40,6 +32,26 @@ Step 6  JS scraping       Extract API endpoints and secrets from JavaScript file
 
 Everything runs concurrently inside each step.
 A medium-sized target typically finishes in under 90 seconds.
+
+---
+
+## Report
+
+The HTML report is self-contained with a dark terminal aesthetic using **Lucida Console** font.
+No external dependencies, no CDN calls. Tabbed layout — no scrolling required.
+
+![Report overview](docs/assets/report-full.png)
+
+![CVE matches](docs/assets/report-cve.png)
+
+**Tabs:**
+- **Subdomains** — resolved hosts with IPs, source (crt.sh / DNS brute-force)
+- **Open Ports** — service banners per host/port
+- **HTTP** — status codes, titles, server headers, detected technologies, missing security headers
+- **CVE** — matches linked to NVD with CVSS score and severity
+- **WAF** — detected vendors (Cloudflare, Akamai, Imperva, AWS WAF, F5, Barracuda, ModSec)
+- **Paths** — directory brute-force hits with redirect destinations
+- **JS** — API endpoints and secrets extracted from JavaScript files
 
 ---
 
@@ -73,6 +85,7 @@ Flags:
   -threads     int      Concurrent goroutines        (default: 50)
   -no-passive           Skip crt.sh passive recon
   -version              Print version and exit
+  -db-hash              Print CVE database integrity hash and exit
 ```
 
 ### Examples
@@ -81,16 +94,16 @@ Flags:
 # Basic scan
 recon-x -target example.com
 
-# Save both HTML and JSON
+# Save both HTML and JSON reports
 recon-x -target example.com -output report.html -json report.json
 
 # Custom wordlist, more threads
 recon-x -target example.com -wordlist wordlists/big.txt -threads 100
 
-# Targeted port list, no passive recon
+# Targeted port list, skip passive recon
 recon-x -target example.com -no-passive -ports 80,443,8080,8443
 
-# Full scan, all outputs
+# Full scan with all outputs
 recon-x -target example.com -output report.html -json report.json -threads 100
 ```
 
@@ -120,38 +133,40 @@ terminal interface. Each step updates in real time as findings come in.
 
 ---
 
-## Report
+## CVE Detection
 
-The HTML report is self-contained, uses **Lucida Console** font, and has a clean
-monotone dark terminal aesthetic. No external dependencies, no CDN calls.
+Signature-based matching against a database of **190+ CVEs** across 48 products.
+No API calls, no rate limits — fully offline.
 
-Sections:
-- Summary cards — subdomain count, open ports, HTTP services, CVE matches
-- Subdomains — with resolved IPs and crt.sh / DNS source
-- Open ports — with service banners
-- HTTP services — status codes, titles, server headers, detected technologies
-- CVE matches — linked to NVD, matched from banner strings
-- WAF detection — Cloudflare, Akamai, Imperva, AWS WAF, F5, and more
-- Directory brute-force — filtered to status codes worth investigating
-- JS findings — API endpoints and secrets extracted from JavaScript files
+| Category | Products |
+|---|---|
+| Web servers | Apache HTTP, nginx, IIS, lighttpd |
+| SSH / FTP | OpenSSH, vsftpd, ProFTPD |
+| Mail | Exim, Zimbra, Roundcube |
+| Application servers | Tomcat, WebLogic, JBoss, GlassFish |
+| Databases | MySQL, PostgreSQL, MongoDB, Redis, Elasticsearch |
+| CMS / Frameworks | WordPress, Drupal, Joomla, Magento |
+| CI/CD | Jenkins, GitLab, Nexus, Harbor |
+| Network / Security | F5 BIG-IP, Citrix ADC, Fortinet FortiOS, Pulse/Ivanti |
+| Monitoring | Grafana, Kibana, Prometheus |
+| Middleware | Apache Struts, Spring, Log4j, ActiveMQ, Zookeeper |
+| Cloud / Container | Kubernetes, VMware vCenter |
+| Other | Confluence, Jira, Solr, Keycloak, ColdFusion, OpenSSL |
 
-The JSON output mirrors the same structure and is suitable for integration
-with your own tooling or further processing.
+Detection uses banner strings, HTTP headers, response bodies, and version endpoint probing
+(`/actuator/info`, `/api/v4/version`, `/_cluster/stats`, `/solr/admin/info/system`).
+
+The CVE database is SHA-256 protected — tampered signatures are caught at startup.
 
 ---
 
-## Detection capabilities
+## WAF Detection
 
-| Category         | What it detects                                                       |
-|------------------|-----------------------------------------------------------------------|
-| Web servers      | Nginx, Apache, IIS, Caddy, Gunicorn                                   |
-| Languages        | PHP, ASP.NET, Express.js, Next.js                                     |
-| CDN / Cloud      | Cloudflare, AWS                                                       |
-| CMS              | WordPress, Drupal, Joomla                                             |
-| Frameworks       | React, Vue.js, Angular, jQuery, Laravel, Django, FastAPI              |
-| WAF vendors      | Cloudflare, Akamai, Imperva, Sucuri, AWS WAF, F5, Barracuda, ModSec  |
-| CVE matching     | Apache 2.4.49/50, OpenSSH < 8, vsftpd 2.3.4, Exim, IIS, nginx, Redis |
-| JS secrets       | AWS keys, API keys, tokens, passwords, Bearer tokens, DB URIs         |
+| Vendor |
+|---|
+| Cloudflare · Akamai · Imperva / Incapsula · Sucuri |
+| AWS WAF · F5 BIG-IP ASM · Barracuda · ModSecurity |
+| Citrix NetScaler · Fortinet FortiWeb · Radware |
 
 ---
 
@@ -163,30 +178,20 @@ recon-x/
 ├── ui/
 │   └── model.go                 Bubbletea TUI — 6-step live progress view
 ├── internal/
-│   ├── banner/
-│   │   └── grab.go              TCP banner grabbing (raw socket read)
-│   ├── crtsh/
-│   │   └── lookup.go            crt.sh Certificate Transparency passive recon
-│   ├── dirbust/
-│   │   ├── bust.go              Concurrent HTTP path brute-force
-│   │   └── paths.txt            Embedded wordlist (~80 common paths)
-│   ├── httpcheck/
-│   │   └── check.go             HTTP probe + tech fingerprinting
-│   ├── jsscan/
-│   │   └── scan.go              JS file discovery + secret/endpoint extraction
-│   ├── output/
-│   │   └── json.go              JSON report serialization
-│   ├── portscan/
-│   │   └── scan.go              Concurrent TCP port scanner
-│   ├── report/
-│   │   └── report.go            HTML report generator
-│   ├── subdomain/
-│   │   ├── enum.go              DNS resolver + passive result merge
-│   │   └── wordlist.txt         Embedded wordlist (~100 prefixes)
+│   ├── banner/grab.go           TCP banner grabbing (Redis, MySQL, PG, Mongo, Memcached, ZK, ActiveMQ)
+│   ├── crtsh/lookup.go          crt.sh Certificate Transparency passive recon
+│   ├── dirbust/bust.go          Concurrent HTTP path brute-force
+│   ├── httpcheck/check.go       HTTP probe + tech fingerprinting + security headers
+│   ├── jsscan/scan.go           JS file discovery + secret/endpoint extraction
+│   ├── output/json.go           JSON report serialization
+│   ├── portscan/scan.go         Concurrent TCP port scanner
+│   ├── report/report.go         HTML report generator
+│   ├── subdomain/enum.go        DNS resolver + passive result merge
 │   ├── vulns/
-│   │   └── match.go             Banner-to-CVE matching (10 entries)
-│   └── waf/
-│       └── detect.go            WAF fingerprinting from headers/cookies/body
+│   │   ├── match.go             190+ CVE database + banner/header/body detection engine
+│   │   ├── probe.go             HTTP version endpoint probing
+│   │   └── integrity.go         SHA-256 database integrity check
+│   └── waf/detect.go            WAF fingerprinting from headers/cookies/body
 ```
 
 ---
@@ -195,11 +200,8 @@ recon-x/
 
 - Only use this tool against targets you have **explicit written permission** to scan.
 - crt.sh queries are passive and leave no trace on the target.
-- TLS verification is disabled for HTTP probing — this is intentional so
-  self-signed certificates on internal hosts do not block discovery.
-- Port scan timeout is 2 seconds per connection.
-- JS scanning only fetches files — it does not execute JavaScript.
-- CVE matching is signature-based (banner regex). Always verify findings manually.
+- TLS verification is disabled for HTTP probing — intentional for self-signed certificates on internal hosts.
+- CVE matching is signature-based. Always verify findings manually.
 
 ---
 
