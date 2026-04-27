@@ -11,23 +11,28 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/bytezora/recon-x/internal/axfr"
 	"github.com/bytezora/recon-x/internal/buckets"
 	"github.com/bytezora/recon-x/internal/crtsh"
 	"github.com/bytezora/recon-x/internal/dirbust"
 	"github.com/bytezora/recon-x/internal/ghsearch"
 	"github.com/bytezora/recon-x/internal/httpcheck"
 	"github.com/bytezora/recon-x/internal/jsscan"
+	"github.com/bytezora/recon-x/internal/openredirect"
 	"github.com/bytezora/recon-x/internal/output"
 	"github.com/bytezora/recon-x/internal/portscan"
 	"github.com/bytezora/recon-x/internal/report"
+	"github.com/bytezora/recon-x/internal/screenshot"
 	"github.com/bytezora/recon-x/internal/subdomain"
+	"github.com/bytezora/recon-x/internal/tlscheck"
 	"github.com/bytezora/recon-x/internal/vulns"
 	"github.com/bytezora/recon-x/internal/waf"
+	"github.com/bytezora/recon-x/internal/whois"
 	"github.com/bytezora/recon-x/ui"
 )
 
 const (
-	version      = "1.2.1"
+	version      = "1.3.0"
 	defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 )
 
@@ -72,15 +77,20 @@ func main() {
 	prog := tea.NewProgram(m, tea.WithAltScreen())
 
 	var (
-		finalSubs    []subdomain.Result
-		finalPorts   []portscan.Result
-		finalHTTP    []httpcheck.Result
-		finalVulns   []vulns.Match
-		finalWAFs    []waf.Result
-		finalDirs    []dirbust.Hit
-		finalJS      []jsscan.Finding
-		finalGH      []ghsearch.Finding
-		finalBuckets []buckets.Result
+		finalSubs      []subdomain.Result
+		finalPorts     []portscan.Result
+		finalHTTP      []httpcheck.Result
+		finalVulns     []vulns.Match
+		finalWAFs      []waf.Result
+		finalDirs      []dirbust.Hit
+		finalJS        []jsscan.Finding
+		finalGH        []ghsearch.Finding
+		finalBuckets   []buckets.Result
+		finalTLS       []tlscheck.Result
+		finalRedirects []openredirect.Result
+		finalAXFR      []axfr.Result
+		finalWHOIS     *whois.Result
+		finalShots     []screenshot.Result
 	)
 
 	go func() {
@@ -88,6 +98,7 @@ func main() {
 			&finalSubs, &finalPorts, &finalHTTP,
 			&finalVulns, &finalWAFs, &finalDirs, &finalJS,
 			&finalGH, &finalBuckets,
+			&finalTLS, &finalRedirects, &finalAXFR, &finalWHOIS, &finalShots,
 		)
 		prog.Send(ui.DoneMsg{})
 	}()
@@ -98,7 +109,8 @@ func main() {
 	}
 
 	if err := report.Generate(cfg.Target, finalSubs, finalPorts, finalHTTP,
-		finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets, cfg.Output); err != nil {
+		finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
+		finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots, cfg.Output); err != nil {
 		fail("report error: %v", err)
 		os.Exit(1)
 	}
@@ -106,7 +118,8 @@ func main() {
 
 	if cfg.JSON != "" {
 		if err := output.WriteJSON(cfg.JSON, cfg.Target, finalSubs, finalPorts, finalHTTP,
-			finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets); err != nil {
+			finalVulns, finalWAFs, finalDirs, finalJS, finalGH, finalBuckets,
+			finalTLS, finalRedirects, finalAXFR, finalWHOIS, finalShots); err != nil {
 			fail("JSON error: %v", err)
 		} else {
 			success("JSON output → %s", styleYellow.Render(cfg.JSON))
@@ -128,8 +141,13 @@ func runScans(
 	wafs  *[]waf.Result,
 	dirs  *[]dirbust.Hit,
 	jsf   *[]jsscan.Finding,
-	ghf  *[]ghsearch.Finding,
-	bkts *[]buckets.Result,
+	ghf   *[]ghsearch.Finding,
+	bkts  *[]buckets.Result,
+	tlsr  *[]tlscheck.Result,
+	redir *[]openredirect.Result,
+	axfrr *[]axfr.Result,
+	who   **whois.Result,
+	shots *[]screenshot.Result,
 ) {
 	prog.Send(ui.StepStartMsg(0))
 	var passiveNames []string
@@ -172,24 +190,30 @@ func runScans(
 			),
 		})
 	})
-	for _, p := range *ports {
-		if p.Banner == "" {
-			continue
-		}
-		if matches := vulns.CheckBanner(p.Host, p.Port, p.Banner); len(matches) > 0 {
-			*vs = append(*vs, matches...)
-			for _, m := range matches {
-				prog.Send(ui.ItemMsg{
-					Icon: styleRed.Render("⚠"),
-					Text: styleRed.Render(m.CVE) + "  " + styleMuted.Render(m.Description),
-				})
-			}
-		}
-	}
 	prog.Send(ui.StepDoneMsg{Step: 2, Count: len(*ports)})
 
 	prog.Send(ui.StepStartMsg(3))
 	*http = httpcheck.Check(*ports, cfg.Threads)
+	seenCVE := make(map[string]bool)
+	addVuln := func(matches []vulns.Match) {
+		for _, m := range matches {
+			key := m.Host + ":" + fmt.Sprintf("%d", m.Port) + ":" + m.CVE
+			if seenCVE[key] {
+				continue
+			}
+			seenCVE[key] = true
+			*vs = append(*vs, m)
+			prog.Send(ui.ItemMsg{
+				Icon: styleRed.Render("⚠"),
+				Text: styleRed.Render(m.CVE) + "  " + styleMuted.Render(m.Description),
+			})
+		}
+	}
+	for _, p := range *ports {
+		if p.Banner != "" {
+			addVuln(vulns.CheckBanner(p.Host, p.Port, p.Banner))
+		}
+	}
 	for _, h := range *http {
 		if detected := waf.Detect(h.Host, h.URL, h.Headers, h.Body); len(detected) > 0 {
 			*wafs = append(*wafs, detected...)
@@ -200,30 +224,9 @@ func runScans(
 				})
 			}
 		}
-		if matches := vulns.CheckHTTPFull(h.Host, h.Port, h.Headers, h.Body); len(matches) > 0 {
-			*vs = append(*vs, matches...)
-			for _, m := range matches {
-				prog.Send(ui.ItemMsg{
-					Icon: styleRed.Render("⚠"),
-					Text: styleRed.Render(m.CVE) + "  " + styleMuted.Render(m.Description),
-				})
-			}
-		}
-		{
-			scheme := "http"
-			if h.Port == 443 || h.Port == 8443 {
-				scheme = "https"
-			}
-			if probeMatches := vulns.ProbeVersionEndpoints(scheme, h.Host, h.Port); len(probeMatches) > 0 {
-				*vs = append(*vs, probeMatches...)
-				for _, m := range probeMatches {
-					prog.Send(ui.ItemMsg{
-						Icon: styleRed.Render("⚠"),
-						Text: styleRed.Render(m.CVE) + "  " + styleMuted.Render(m.Description),
-					})
-				}
-			}
-		}
+		addVuln(vulns.CheckHTTPFull(h.Host, h.Port, h.Headers, h.Body))
+		scheme := strings.SplitN(h.URL, "://", 2)[0]
+		addVuln(vulns.ProbeVersionEndpoints(scheme, h.Host, h.Port))
 	}
 	prog.Send(ui.StepDoneMsg{Step: 3, Count: len(*http)})
 
@@ -285,6 +288,85 @@ func runScans(
 		})
 	})
 	prog.Send(ui.StepDoneMsg{Step: 7, Count: len(*bkts)})
+
+	// Step 8: TLS/SSL analysis
+	prog.Send(ui.StepStartMsg(8))
+	var tlsTargets []tlscheck.Target
+	seenTLS := make(map[string]bool)
+	for _, h := range *http {
+		if h.Port == 443 || h.Port == 8443 || h.Port == 4443 || h.Port == 7443 {
+			key := fmt.Sprintf("%s:%d", h.Host, h.Port)
+			if !seenTLS[key] {
+				seenTLS[key] = true
+				tlsTargets = append(tlsTargets, tlscheck.Target{Host: h.Host, Port: h.Port})
+			}
+		}
+	}
+	*tlsr = tlscheck.Check(tlsTargets, cfg.Threads, func(r tlscheck.Result) {
+		icon := styleGreen.Render("🔒")
+		if len(r.Issues) > 0 {
+			icon = styleRed.Render("🔓")
+		}
+		prog.Send(ui.ItemMsg{
+			Icon: icon,
+			Text: styleMuted.Render(fmt.Sprintf("%s:%d", r.Host, r.Port)) + "  " +
+				styleYellow.Render(r.Proto) + "  " +
+				styleMuted.Render(r.Expiry),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 8, Count: len(*tlsr)})
+
+	// Step 9: Open redirect
+	prog.Send(ui.StepStartMsg(9))
+	*redir = openredirect.Check(baseURLs, cfg.Threads, func(r openredirect.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleRed.Render("↪"),
+			Text: styleMuted.Render(r.BaseURL) + "  " + styleYellow.Render("?"+r.Param) + "  " + styleMuted.Render(r.Location),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 9, Count: len(*redir)})
+
+	// Step 10: DNS zone transfer (AXFR)
+	prog.Send(ui.StepStartMsg(10))
+	*axfrr = axfr.Transfer(cfg.Target)
+	total := 0
+	for _, r := range *axfrr {
+		if r.Success {
+			total += len(r.Records)
+			prog.Send(ui.ItemMsg{
+				Icon: styleRed.Render("⚠"),
+				Text: styleRed.Render("AXFR success") + "  " + styleMuted.Render(r.NS) + "  " +
+					styleMuted.Render(fmt.Sprintf("%d records", len(r.Records))),
+			})
+		}
+	}
+	prog.Send(ui.StepDoneMsg{Step: 10, Count: total})
+
+	// Step 11: WHOIS lookup
+	prog.Send(ui.StepStartMsg(11))
+	if w, err := whois.Lookup(cfg.Target); err == nil {
+		*who = w
+		prog.Send(ui.ItemMsg{
+			Icon: stylePurple.Render("◈"),
+			Text: styleMuted.Render(w.Registrar) + "  " + styleYellow.Render(w.Country),
+		})
+	}
+	prog.Send(ui.StepDoneMsg{Step: 11, Count: func() int {
+		if *who != nil {
+			return 1
+		}
+		return 0
+	}()})
+
+	// Step 12: HTTP screenshots
+	prog.Send(ui.StepStartMsg(12))
+	*shots = screenshot.Capture(baseURLs, cfg.Threads, func(r screenshot.Result) {
+		prog.Send(ui.ItemMsg{
+			Icon: styleGreen.Render("📷"),
+			Text: styleMuted.Render(r.URL),
+		})
+	})
+	prog.Send(ui.StepDoneMsg{Step: 12, Count: len(*shots)})
 }
 
 func parseFlags() Config {

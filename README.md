@@ -1,10 +1,10 @@
 # recon-x
 
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-1.2.1-39ff14?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.0-39ff14?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-555?style=flat-square)
 
-Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, and cloud bucket enumeration. Outputs an HTML report and optional JSON.
+Web recon tool I wrote in Go. One command — passive subdomain discovery, port scan, CVE matching, WAF detection, dir brute-force, JS secret extraction, GitHub dorking, cloud bucket enumeration, TLS analysis, open redirect detection, DNS zone transfer, WHOIS lookup, and HTTP screenshots. Outputs a self-contained HTML report and optional JSON.
 
 ---
 
@@ -49,32 +49,35 @@ recon-x -target example.com -github-token ghp_xxxx
 ## What runs
 
 ```
-1. crt.sh passive recon
-2. DNS subdomain brute-force
-3. TCP port scan → banner grab → CVE match
-4. HTTP fingerprint → tech stack → WAF detection
-5. Directory brute-force (~80 paths)
-6. JS scraping → endpoints + secrets
-7. GitHub dorking → leaked keys/tokens in code
-8. Cloud bucket enum → S3 / GCS / Azure
-   → HTML report + optional JSON
+ 1. crt.sh passive recon
+ 2. DNS subdomain brute-force
+ 3. TCP port scan → banner grab → CVE match
+ 4. HTTP fingerprint → tech stack → WAF detection
+ 5. Directory brute-force (~80 paths)
+ 6. JS scraping → endpoints + secrets
+ 7. GitHub dorking → leaked keys/tokens in code
+ 8. Cloud bucket enum → S3 / GCS / Azure
+ 9. TLS analysis → weak ciphers, expiring certs, SAN mismatch
+10. Open redirect detection → 22 params × 2 payloads
+11. DNS zone transfer (AXFR) → full zone leak attempt
+12. WHOIS lookup → registrar, org, country, dates
+13. HTTP screenshots → headless browser, embedded in report
+    → self-contained HTML report + optional JSON
 ```
 
 ---
 
 ## Terminal UI
 
-![Terminal](docs/assets/terminal.png)
+![Terminal](assets/terminal.png)
 
 ---
 
 ## Report
 
-Self-contained HTML, Lucida Console, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets.
+Self-contained HTML, dark terminal style. Tabbed — subdomains, ports, HTTP, CVE, WAF, dirs, JS secrets, GitHub leaks, cloud buckets, TLS, open redirects, AXFR, WHOIS, screenshots.
 
-![Report](docs/assets/report-full.png)
-
-![CVE tab](docs/assets/report-cve.png)
+![Report](assets/report.png)
 
 ---
 

@@ -5,15 +5,20 @@ import (
 "os"
 "time"
 
+"github.com/bytezora/recon-x/internal/axfr"
 "github.com/bytezora/recon-x/internal/buckets"
 "github.com/bytezora/recon-x/internal/dirbust"
 "github.com/bytezora/recon-x/internal/ghsearch"
 "github.com/bytezora/recon-x/internal/httpcheck"
 "github.com/bytezora/recon-x/internal/jsscan"
+"github.com/bytezora/recon-x/internal/openredirect"
 "github.com/bytezora/recon-x/internal/portscan"
+"github.com/bytezora/recon-x/internal/screenshot"
 "github.com/bytezora/recon-x/internal/subdomain"
+"github.com/bytezora/recon-x/internal/tlscheck"
 "github.com/bytezora/recon-x/internal/vulns"
 "github.com/bytezora/recon-x/internal/waf"
+"github.com/bytezora/recon-x/internal/whois"
 )
 
 type Data struct {
@@ -28,6 +33,11 @@ DirHits     []dirbust.Hit
 JSFindings  []jsscan.Finding
 GHFindings  []ghsearch.Finding
 Buckets     []buckets.Result
+TLS         []tlscheck.Result
+Redirects   []openredirect.Result
+AXFR        []axfr.Result
+WHOIS       *whois.Result
+Screenshots []screenshot.Result
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -73,7 +83,7 @@ header{
 /* ── summary cards ── */
 .summary{
   display:grid;
-  grid-template-columns:repeat(7,1fr);
+  grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
   gap:0;
   border-bottom:1px solid var(--line);
   flex-shrink:0;
@@ -218,6 +228,26 @@ footer{
   <div class="card" onclick="show('buckets',this)">
     <div class="num">{{len .Buckets}}</div>
     <div class="label">buckets</div>
+  </div>
+  <div class="card" onclick="show('tls',this)">
+    <div class="num">{{len .TLS}}</div>
+    <div class="label">tls</div>
+  </div>
+  <div class="card" onclick="show('redirect',this)">
+    <div class="num">{{len .Redirects}}</div>
+    <div class="label">redirects</div>
+  </div>
+  <div class="card" onclick="show('axfr',this)">
+    <div class="num">{{len .AXFR}}</div>
+    <div class="label">axfr</div>
+  </div>
+  <div class="card" onclick="show('whois',this)">
+    <div class="num">{{if .WHOIS}}1{{else}}0{{end}}</div>
+    <div class="label">whois</div>
+  </div>
+  <div class="card" onclick="show('screenshots',this)">
+    <div class="num">{{len .Screenshots}}</div>
+    <div class="label">screens</div>
   </div>
 </div>
 
@@ -433,9 +463,114 @@ footer{
     {{else}}<p class="empty">[ no exposed buckets found ]</p>{{end}}
   </div>
 
+  <div id="tab-tls" class="tab-content">
+    <h2>TLS/SSL Analysis</h2>
+    {{if .TLS}}
+    <table>
+      <thead><tr><th>#</th><th>Host</th><th>Port</th><th>Protocol</th><th>Cipher</th><th>Expiry</th><th>Issues</th></tr></thead>
+      <tbody>
+      {{range $i,$t := .TLS}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$t.Host}}</td>
+        <td class="mono">{{$t.Port}}</td>
+        <td><span class="tag {{if or (eq $t.Proto "TLS 1.0") (eq $t.Proto "TLS 1.1")}}tag-alert{{else}}tag-hi{{end}}">{{$t.Proto}}</span></td>
+        <td class="mono">{{$t.Cipher}}</td>
+        <td class="mono">{{$t.Expiry}}</td>
+        <td>{{range $t.Issues}}<span class="tag tag-alert">{{.}}</span> {{end}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no TLS services found — requires HTTPS ports ]</p>{{end}}
+  </div>
+
+  <div id="tab-redirect" class="tab-content">
+    <h2>Open Redirect Detector</h2>
+    {{if .Redirects}}
+    <table>
+      <thead><tr><th>#</th><th>Base URL</th><th>Param</th><th>Payload</th><th>Location</th><th>Status</th></tr></thead>
+      <tbody>
+      {{range $i,$r := .Redirects}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$r.BaseURL}}</td>
+        <td><span class="tag tag-alert">{{$r.Param}}</span></td>
+        <td class="mono">{{$r.Payload}}</td>
+        <td class="mono">{{$r.Location}}</td>
+        <td class="mono">{{$r.StatusCode}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no open redirects found ]</p>{{end}}
+  </div>
+
+  <div id="tab-axfr" class="tab-content">
+    <h2>DNS Zone Transfer (AXFR)</h2>
+    {{if .AXFR}}
+    {{range .AXFR}}
+    {{if .Success}}
+    <h3 style="margin:1rem 0 .5rem;color:var(--alert)">⚠ Zone transfer succeeded via {{.NS}}</h3>
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Value</th><th>TTL</th></tr></thead>
+      <tbody>
+      {{range $i,$rec := .Records}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td class="mono">{{$rec.Name}}</td>
+        <td><span class="tag">{{$rec.Type}}</span></td>
+        <td class="mono">{{$rec.Value}}</td>
+        <td class="mono">{{$rec.TTL}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="empty">[ AXFR refused by {{.NS}} ]</p>
+    {{end}}
+    {{end}}
+    {{else}}<p class="empty">[ DNS zone transfer not attempted or all NS refused ]</p>{{end}}
+  </div>
+
+  <div id="tab-whois" class="tab-content">
+    <h2>WHOIS / ASN Lookup</h2>
+    {{if .WHOIS}}
+    <table>
+      <tbody>
+        <tr><td class="mono" style="width:160px;color:var(--dim)">Registrar</td><td class="mono">{{.WHOIS.Registrar}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Org</td><td class="mono">{{.WHOIS.Org}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Country</td><td class="mono">{{.WHOIS.Country}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Created</td><td class="mono">{{.WHOIS.Created}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Updated</td><td class="mono">{{.WHOIS.Updated}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Expires</td><td class="mono">{{.WHOIS.Expires}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Nameservers</td><td class="mono">{{range .WHOIS.Nameservers}}{{.}} {{end}}</td></tr>
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ WHOIS lookup failed or no data ]</p>{{end}}
+  </div>
+
+  <div id="tab-screenshots" class="tab-content">
+    <h2>HTTP Screenshots</h2>
+    {{if .Screenshots}}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;margin-top:1rem">
+    {{range .Screenshots}}
+    <div style="background:var(--bg3);border:1px solid var(--line);padding:.5rem">
+      <div class="mono" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem;word-break:break-all">{{.URL}}</div>
+      {{if .DataURI}}
+      <img src="{{.DataURI}}" style="width:100%;border:1px solid var(--line)" alt="{{.URL}}"/>
+      {{else}}
+      <p class="empty" style="height:60px;display:flex;align-items:center;justify-content:center">[ {{.Error}} ]</p>
+      {{end}}
+    </div>
+    {{end}}
+    </div>
+    {{else}}<p class="empty">[ no screenshots — headless browser not found ]</p>{{end}}
+  </div>
+
 </div>
 
-<footer>recon-x v1.2.1 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
+<footer>recon-x v1.3.0 &nbsp;&middot;&nbsp; <a href="https://github.com/bytezora/recon-x">github.com/bytezora/recon-x</a> &nbsp;&middot;&nbsp; authorized testing only</footer>
 
 <script>
 function show(tab, card) {
@@ -457,8 +592,13 @@ vs     []vulns.Match,
 wafs   []waf.Result,
 dirs   []dirbust.Hit,
 jsf    []jsscan.Finding,
-ghf   []ghsearch.Finding,
-bkts  []buckets.Result,
+ghf    []ghsearch.Finding,
+bkts   []buckets.Result,
+tlsr   []tlscheck.Result,
+redir  []openredirect.Result,
+axfrr  []axfr.Result,
+who    *whois.Result,
+shots  []screenshot.Result,
 outputFile string,
 ) error {
 f, err := os.Create(outputFile)
@@ -480,5 +620,10 @@ DirHits:     dirs,
 JSFindings:  jsf,
 GHFindings:  ghf,
 Buckets:     bkts,
+TLS:         tlsr,
+Redirects:   redir,
+AXFR:        axfrr,
+WHOIS:       who,
+Screenshots: shots,
 })
 }
