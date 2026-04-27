@@ -1,0 +1,28 @@
+# Binaries
+recon-x
+recon-x.exe
+*.exe
+*.out
+
+# Reports
+*.html
+*.json
+
+# Build artifacts
+/dist/
+/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts / temp
+*.py
+push_*.sh
+patch_*.sh

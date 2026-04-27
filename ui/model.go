@@ -16,8 +16,7 @@ var (
 	stylePurple  = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
 	styleGreen   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF87")).Bold(true)
 	styleYellow  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA502"))
-	styleRed     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4757"))
-	styleCyan    = lipgloss.NewStyle().Foreground(lipgloss.Color("#00B4D8")).Bold(true)
+	styleCyan= lipgloss.NewStyle().Foreground(lipgloss.Color("#00B4D8")).Bold(true)
 	styleMuted   = lipgloss.NewStyle().Foreground(lipgloss.Color("#8B949E"))
 	styleBox     = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

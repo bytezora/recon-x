@@ -20,7 +20,7 @@ const (
 // Grab connects to ip:port and returns the service banner.
 // Returns an empty string if the connection fails or no banner is sent.
 func Grab(ip string, port int) string {
-	addr := fmt.Sprintf("%s:%d", ip, port)
+	addr := net.JoinHostPort(ip, fmt.Sprintf("%d", port))
 	conn, err := net.DialTimeout("tcp", addr, dialTimeout)
 	if err != nil {
 		return ""
