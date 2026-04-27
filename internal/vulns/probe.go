@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -106,7 +107,195 @@ var probeSpecs = []probeSpec{
 		}
 		return sub[:idx3]
 	}},
-	{"/service/rest/v1/status/check", "nexus", func(body string) string { return "" }},
+{"/rest/api/2/serverInfo", "jira", func(body string) string {
+var m map[string]interface{}
+if json.Unmarshal([]byte(body), &m) != nil {
+return ""
+}
+if vv, ok := m["version"].(string); ok {
+return vv
+}
+return ""
+}},
+{"/rest/applinks/1.0/manifest", "confluence", func(body string) string {
+var m map[string]interface{}
+if json.Unmarshal([]byte(body), &m) != nil {
+return ""
+}
+if vv, ok := m["version"].(string); ok {
+return vv
+}
+return ""
+}},
+{"/wp-json/", "wordpress", func(body string) string {
+var m map[string]interface{}
+if json.Unmarshal([]byte(body), &m) != nil {
+return ""
+}
+idx := strings.Index(body, `"generator"`)
+if idx < 0 {
+return ""
+}
+sub := body[idx+11:]
+for i, c := range sub {
+if c == '"' {
+sub = sub[i+1:]
+break
+}
+}
+end := strings.Index(sub, `"`)
+if end < 0 {
+return ""
+}
+gen := sub[:end]
+if strings.HasPrefix(gen, "WordPress ") {
+return strings.TrimPrefix(gen, "WordPress ")
+}
+return ""
+}},
+{"/readme.txt", "wordpress", func(body string) string {
+for _, line := range strings.Split(body, "\n") {
+if strings.HasPrefix(strings.TrimSpace(line), "Version:") {
+return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "Version:"))
+}
+}
+return ""
+}},
+{"/CHANGELOG.txt", "drupal", func(body string) string {
+for _, line := range strings.Split(body, "\n") {
+line = strings.TrimSpace(line)
+if strings.HasPrefix(line, "Drupal ") {
+parts := strings.Fields(line)
+if len(parts) >= 2 {
+return parts[1]
+}
+}
+}
+return ""
+}},
+{"/api/v2.0/systeminfo", "harbor", func(body string) string {
+idx := strings.Index(body, `"harbor_version"`)
+if idx < 0 {
+return ""
+}
+sub := body[idx+16:]
+for i, c := range sub {
+if c == '"' {
+sub = sub[i+1:]
+break
+}
+}
+end := strings.Index(sub, `"`)
+if end < 0 {
+return ""
+}
+return strings.TrimPrefix(sub[:end], "v")
+}},
+{"/administrator/manifests/files/joomla.xml", "joomla", func(body string) string {
+re := regexp.MustCompile(`<version>([\d.]+)</version>`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+return ""
+}},
+{"/realms/master", "keycloak", func(body string) string {
+idx := strings.Index(body, `"keycloak-version"`)
+if idx < 0 {
+return ""
+}
+sub := body[idx+18:]
+for i, c := range sub {
+if c == '"' {
+sub = sub[i+1:]
+break
+}
+}
+end := strings.Index(sub, `"`)
+if end < 0 {
+return ""
+}
+return sub[:end]
+}},
+{"/js/keycloak.js", "keycloak", func(body string) string {
+re := regexp.MustCompile(`keycloak-js/([\d.]+)`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+return ""
+}},
+{"/", "roundcube", func(body string) string {
+re := regexp.MustCompile(`Roundcube Webmail ([\d.]+)`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+re2 := regexp.MustCompile(`rcmcssvsn=([\d.]+)`)
+m2 := re2.FindStringSubmatch(body)
+if len(m2) > 1 {
+return m2[1]
+}
+return ""
+}},
+{"/service/rest/v1/status/check", "nexus", func(body string) string {
+idx := strings.Index(body, `"version"`)
+if idx < 0 {
+return ""
+}
+sub := body[idx+9:]
+for i, c := range sub {
+if c == '"' {
+sub = sub[i+1:]
+break
+}
+}
+end := strings.Index(sub, `"`)
+if end < 0 {
+return ""
+}
+return sub[:end]
+}},
+{"/api/json?tree=numExecutors", "jenkins", func(body string) string {
+return ""
+}},
+{"/magento_version", "magento", func(body string) string {
+return strings.TrimSpace(body)
+}},
+{"/admin/", "activemq", func(body string) string {
+re := regexp.MustCompile(`ActiveMQ ([\d.]+)`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+return ""
+}},
+{"/remote/info", "fortinet", func(body string) string {
+var m map[string]interface{}
+if json.Unmarshal([]byte(body), &m) != nil {
+return ""
+}
+if vv, ok := m["version"].(string); ok {
+return vv
+}
+return ""
+}},
+{"/owa/auth/logon.aspx", "exchange", func(body string) string {
+re := regexp.MustCompile(`owa/auth/([\d.]+)/`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+return ""
+}},
+{"/zimbra/", "zimbra", func(body string) string {
+re := regexp.MustCompile(`Zimbra[/ ]([\d.]+)`)
+m := re.FindStringSubmatch(body)
+if len(m) > 1 {
+return m[1]
+}
+return ""
+}},
 	{"/api/health", "grafana", func(body string) string {
 		var m map[string]string
 		if json.Unmarshal([]byte(body), &m) != nil {

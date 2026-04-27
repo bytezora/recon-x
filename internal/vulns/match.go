@@ -567,6 +567,9 @@ func buildMatches(host string, port int, rawBanner string, detections []detected
 			if !d.presenceOnly && !inRange(e, d) {
 				continue
 			}
+			if d.presenceOnly && e.cvss < 7.0 {
+				continue
+			}
 			if seenCVE[e.cve] {
 				continue
 			}
@@ -574,6 +577,10 @@ func buildMatches(host string, port int, rawBanner string, detections []detected
 			confidence := "high"
 			if d.presenceOnly {
 				confidence = "low"
+				e.desc = e.desc + " [version unknown — verify manually]"
+			}
+			if !d.ver.valid() && !d.presenceOnly {
+				confidence = "medium"
 			}
 			matches = append(matches, Match{
 				Host:        host,

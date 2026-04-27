@@ -465,7 +465,7 @@ a:hover{text-decoration:underline}
         </td>
         <td>{{$v.Description}}</td>
         <td class="mono">{{$v.Banner}}</td>
-        <td>{{$v.Confidence}}</td>
+        <td>{{if eq $v.Confidence "confirmed"}}<span class="tag tag-alert" style="font-weight:700">CONFIRMED</span>{{else if eq $v.Confidence "high"}}<span class="tag tag-hi">high</span>{{else if eq $v.Confidence "medium"}}<span class="tag">medium</span>{{else}}<span class="tag" style="color:var(--dim)">low</span>{{end}}</td>
       </tr>
       {{end}}
       </tbody>

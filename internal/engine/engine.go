@@ -220,6 +220,27 @@ addVuln(vulns.CheckHTTPFull(h.Host, h.Port, h.Headers, h.Body))
 scheme := strings.SplitN(h.URL, "://", 2)[0]
 addVuln(vulns.ProbeVersionEndpoints(scheme, h.Host, h.Port))
 }
+if e.cfg.Target != "" {
+for _, h := range res.HTTP {
+scheme := strings.SplitN(h.URL, "://", 2)[0]
+verified := vulns.ActiveVerify(scheme, h.Host, h.Port)
+for _, vr := range verified {
+if vr.Confirmed {
+res.Vulns = append(res.Vulns, vulns.Match{
+Host:        h.Host,
+Port:        h.Port,
+CVE:         vr.CVE,
+CVSS:        9.8,
+Severity:    "CRITICAL",
+Description: "CONFIRMED: " + vr.Evidence,
+Link:        "https://nvd.nist.gov/vuln/detail/" + vr.CVE,
+Confidence:  "confirmed",
+})
+send(ui.ItemMsg{Icon: "🔴", Text: "CONFIRMED CVE: " + vr.CVE + " on " + h.Host})
+}
+}
+}
+}
 }
 
 func step4(e *Engine, res *Results, send func(tea.Msg)) {
