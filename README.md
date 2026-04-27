@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/bytezora/recon-x/build.yml?style=flat-square)](https://github.com/bytezora/recon-x/actions)
 
-Attack surface mapper for authorized security assessments. One command covers 26 recon and discovery checks — from passive OSINT to active probing — and outputs a self-contained HTML report plus optional JSON and SARIF.
+Fast attack-surface collector with possible vulnerability indicators. One command, 26 modules: passive OSINT → subdomain enum → port scan → CVE matching → WAF detection → TLS/CORS/SQLi/GraphQL checks → YAML template scan. Outputs self-contained HTML report, JSON and SARIF.
 
-> All findings are indicators for manual verification, not confirmed vulnerabilities. HTTP scanning uses `InsecureSkipVerify: true` to handle self-signed certificates during discovery.
+> Findings are indicators for manual verification, not confirmed vulnerabilities. HTTP scanning uses `InsecureSkipVerify: true` to handle self-signed certs during discovery. Always scan only authorized targets.
 
 ---
 

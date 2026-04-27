@@ -22,10 +22,9 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/ui"
 )
 
-const (
-version      = "2.0.0"
-defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
-)
+var version = "dev"
+
+const defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 
 const banner = `
 ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗      ██╗  ██╗
@@ -75,8 +74,9 @@ stateObj = loaded
 }
 
 fmt.Println(stylePurple.Render(banner))
-fmt.Printf("\n  %s  v%s  ·  by bytezora  ·  for authorized testing only\n\n",
-stylePurple.Render("recon-x"), version)
+fmt.Printf("\n  %s  v%s  ·  by bytezora\n  %s\n\n",
+stylePurple.Render("recon-x"), version,
+styleMuted.Render("fast attack-surface collector · findings are indicators, not confirmed vulns · authorized targets only"))
 
 start := time.Now()
 
