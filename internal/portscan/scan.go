@@ -214,7 +214,8 @@ func expandCIDR(cidr string) ([]string, error) {
 			break
 		}
 	}
-	if len(ips) > 2 {
+	ones, _ := ipnet.Mask.Size()
+	if len(ips) > 2 && ones <= 30 {
 		ips = ips[1 : len(ips)-1]
 	}
 	return ips, nil

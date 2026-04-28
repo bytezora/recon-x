@@ -142,7 +142,22 @@ func testURL(client *http.Client, rawURL string) []Result {
 				continue
 			}
 
-			timeClient := httpclient.New(10*time.Second, false)
+			timeClient := httpclient.New(12*time.Second, false)
+
+			// Baseline: measure normal response time before injection
+			baseReq, err := http.NewRequest("GET", rawURL, nil)
+			if err != nil {
+				continue
+			}
+			baseReq.Header.Set("User-Agent", "Mozilla/5.0 (compatible; recon-x)")
+			baseStart := time.Now()
+			baseResp, baseErr := timeClient.Do(baseReq)
+			baseline := time.Since(baseStart)
+			if baseErr == nil {
+				io.Copy(io.Discard, baseResp.Body)
+				baseResp.Body.Close()
+			}
+
 			req, err := http.NewRequest("GET", testU.String(), nil)
 			if err != nil {
 				continue
@@ -155,13 +170,14 @@ func testURL(client *http.Client, rawURL string) []Result {
 				io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 			}
-			if elapsed >= 4500*time.Millisecond {
+			// Only flag if response is at least 4s longer than baseline
+			if elapsed >= baseline+4*time.Second {
 				seen[key] = true
 				results = append(results, Result{
 					URL:      rawURL,
 					Param:    param,
 					Payload:  payload,
-					Evidence: "Response delayed by " + elapsed.Round(time.Millisecond).String() + " (time-based CMDi)",
+					Evidence: "Response delayed by " + elapsed.Round(time.Millisecond).String() + " (baseline: " + baseline.Round(time.Millisecond).String() + ")",
 					Method:   "time",
 					Detected: true,
 				})

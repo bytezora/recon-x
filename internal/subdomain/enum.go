@@ -79,9 +79,11 @@ func AddPassive(existing []Result, names []string, resolverAddr string, onFound 
 		}
 		seen[name] = true
 
-		ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
-		defer cancel()
-		ips, err := resolver.LookupHost(ctx, name)
+		ips, err := func() ([]string, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
+			defer cancel()
+			return resolver.LookupHost(ctx, name)
+		}()
 		if err != nil {
 			ips = []string{}
 		}
