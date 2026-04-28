@@ -1,5 +1,9 @@
 # recon-x
 
+<p align="center">
+  <img src="assets/logo.png" alt="recon-x logo" width="480"/>
+</p>
+
 [![Release](https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square)](https://github.com/bytezora/recon-x/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/bytezora/recon-x/build.yml?style=flat-square)](https://github.com/bytezora/recon-x/actions)
 ![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go)
