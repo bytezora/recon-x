@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 "bufio"
@@ -15,6 +15,7 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/config"
 "github.com/bytezora/recon-x/internal/engine"
 "github.com/bytezora/recon-x/internal/httpclient"
+"github.com/bytezora/recon-x/internal/diff"
 "github.com/bytezora/recon-x/internal/output"
 "github.com/bytezora/recon-x/internal/report"
 "github.com/bytezora/recon-x/internal/state"
@@ -48,6 +49,8 @@ var moduleNames = map[string]int{
 "screenshot": 12, "takeover": 13, "cors": 14, "bypass": 15, "vhost": 16,
 "favicon": 17, "asn": 18, "graphql": 19, "email": 20, "admin": 21,
 "sqli": 22, "creds": 23, "ratelimit": 24, "templates": 25,
+	"xss": 26, "ssrf": 27, "lfi": 28, "hostheader": 29, "jwt": 30,
+	"wayback": 31, "shodan": 32, "xxe": 33, "cmdi": 34,
 }
 
 func main() {
@@ -126,6 +129,37 @@ success("JSON output → %s", styleYellow.Render(cfg.JSON))
 }
 }
 
+if cfg.MarkdownOut != "" {
+if err := output.WriteMarkdown(cfg.MarkdownOut, output.MarkdownData{
+Target: cfg.Target, Subdomains: res.Subs, Ports: res.Ports, HTTP: res.HTTP,
+Vulns: res.Vulns, WAFs: res.WAFs, DirHits: res.Dirs, JSFindings: res.JS,
+GHFindings: res.GH, Buckets: res.Buckets, TLS: res.TLS, Redirects: res.Redirects,
+AXFR: res.AXFR, WHOIS: res.WHOIS, Screenshots: res.Screenshots,
+Takeover: res.Takeover, CORS: res.CORS, Bypass: res.Bypass, VHosts: res.VHosts,
+Favicons: res.Favicons, ASN: res.ASN, GraphQL: res.GraphQL, EmailSec: res.EmailSec,
+AdminPanel: res.AdminPanel, SQLi: res.SQLi, DefaultCreds: res.DefaultCreds,
+RateLimit: res.RateLimit, Templates: res.Templates,
+XSS: res.XSS, SSRF: res.SSRF, LFI: res.LFI, HostHeader: res.HostHeader,
+JWT: res.JWT, Wayback: res.Wayback, Shodan: res.Shodan, XXE: res.XXE, CmdI: res.CmdI,
+}); err != nil {
+fail("Markdown error: %v", err)
+} else {
+success("Markdown report → %s", styleYellow.Render(cfg.MarkdownOut))
+}
+}
+
+if cfg.DiffFile != "" && cfg.JSON != "" {
+dr, err := diff.Compare(cfg.DiffFile, cfg.JSON)
+if err != nil {
+fail("diff error: %v", err)
+} else {
+fmt.Printf("\n  %s  Diff vs %s\n", stylePurple.Render("◆"), cfg.DiffFile)
+fmt.Printf("  New subdomains: %d  Removed: %d\n", len(dr.NewSubdomains), len(dr.RemovedSubdomains))
+fmt.Printf("  New ports: %d  Removed: %d\n", len(dr.NewPorts), len(dr.RemovedPorts))
+fmt.Printf("  New CVEs: %d  Removed: %d\n\n", len(dr.NewFindings), len(dr.ResolvedFindings))
+}
+}
+
 fmt.Printf("\n  %s  Finished in %s\n\n",
 styleGreen.Render("◆"),
 styleGreen.Render(time.Since(start).Round(time.Second).String()))
@@ -134,7 +168,7 @@ styleGreen.Render(time.Since(start).Round(time.Second).String()))
 func buildModuleSet(modules []string) map[int]bool {
 ms := make(map[int]bool)
 if len(modules) == 0 {
-for i := 0; i <= 25; i++ {
+for i := 0; i <= 34; i++ {
 ms[i] = true
 }
 return ms
@@ -173,6 +207,9 @@ verbose        := flag.Bool("verbose",           false,         "Enable verbose 
 ver            := flag.Bool("version",           false,         "Print version and exit")
 dbHash         := flag.Bool("db-hash",           false,         "Print CVE database fingerprint and exit (for stamping integrity.go)")
 resolver       := flag.String("resolver",        "",            "Custom DNS resolver address (e.g. 1.1.1.1:53)")
+shodanKey      := flag.String("shodan-key",      "",            "Shodan API key for host enrichment (optional)")
+markdownOut    := flag.String("markdown",        "",            "Markdown report output path (optional)")
+diffFile       := flag.String("diff",            "",            "Previous JSON report to diff against (optional)")
 flag.Parse()
 
 if *ver {
@@ -208,6 +245,9 @@ Rate:           *rate,
 Silent:         *silent,
 Verbose:        *verbose,
 Resolver:       *resolver,
+ShodanKey:      *shodanKey,
+MarkdownOut:    *markdownOut,
+DiffFile:       *diffFile,
 }
 
 if *modulesFlag != "" {

@@ -21,8 +21,12 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/favicon"
 "github.com/bytezora/recon-x/internal/finding"
 "github.com/bytezora/recon-x/internal/ghsearch"
+"github.com/bytezora/recon-x/internal/cmdi"
 "github.com/bytezora/recon-x/internal/graphql"
+"github.com/bytezora/recon-x/internal/hostheader"
 "github.com/bytezora/recon-x/internal/httpcheck"
+"github.com/bytezora/recon-x/internal/jwt"
+"github.com/bytezora/recon-x/internal/lfi"
 "github.com/bytezora/recon-x/internal/jsscan"
 "github.com/bytezora/recon-x/internal/notify"
 "github.com/bytezora/recon-x/internal/openredirect"
@@ -31,7 +35,9 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/ratelimit"
 "github.com/bytezora/recon-x/internal/scope"
 "github.com/bytezora/recon-x/internal/screenshot"
+"github.com/bytezora/recon-x/internal/shodan"
 "github.com/bytezora/recon-x/internal/sqli"
+"github.com/bytezora/recon-x/internal/ssrf"
 "github.com/bytezora/recon-x/internal/state"
 "github.com/bytezora/recon-x/internal/subdomain"
 "github.com/bytezora/recon-x/internal/takeover"
@@ -40,7 +46,10 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/internal/vhost"
 "github.com/bytezora/recon-x/internal/vulns"
 "github.com/bytezora/recon-x/internal/waf"
+"github.com/bytezora/recon-x/internal/wayback"
 "github.com/bytezora/recon-x/internal/whois"
+"github.com/bytezora/recon-x/internal/xss"
+"github.com/bytezora/recon-x/internal/xxe"
 "github.com/bytezora/recon-x/ui"
 )
 
@@ -77,6 +86,9 @@ Silent         bool
 Verbose        bool
 TemplatePaths  []string
 Resolver       string
+ShodanKey      string
+MarkdownOut    string
+DiffFile       string
 }
 
 type Results struct {
@@ -107,6 +119,15 @@ SQLi         []sqli.Result
 DefaultCreds []defaultcreds.Result
 RateLimit    []ratelimit.Result
 Templates    []templates.Match
+XSS          []xss.Result
+SSRF         []ssrf.Result
+LFI          []lfi.Result
+HostHeader   []hostheader.Result
+JWT          []jwt.Result
+Wayback      []wayback.Result
+Shodan       []shodan.Result
+XXE          []xxe.Result
+CmdI         []cmdi.Result
 Findings     []finding.Finding
 PassiveNames []string
 }
@@ -528,12 +549,137 @@ Text: styleMuted.Render("["+m.TemplateID+"]") + "  " + styleYellow.Render(m.Name
 }
 }
 
+func step26(e *Engine, res *Results, send func(tea.Msg)) {
+httpURLs := make([]string, 0, len(res.HTTP))
+for _, h := range res.HTTP {
+httpURLs = append(httpURLs, h.URL)
+}
+res.XSS = xss.Detect(httpURLs, e.cfg.Threads, func(r xss.Result) {
+if r.Reflected {
+send(ui.ItemMsg{
+Icon: styleRed.Render("⚡"),
+Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Param) + " [xss:" + r.Context + "]",
+})
+}
+})
+}
+
+func step27(e *Engine, res *Results, send func(tea.Msg)) {
+httpURLs := make([]string, 0, len(res.HTTP))
+for _, h := range res.HTTP {
+httpURLs = append(httpURLs, h.URL)
+}
+res.SSRF = ssrf.Detect(httpURLs, e.cfg.Threads, func(r ssrf.Result) {
+if r.Detected {
+send(ui.ItemMsg{
+Icon: styleRed.Render("⚡"),
+Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Param) + " [ssrf]",
+})
+}
+})
+}
+
+func step28(e *Engine, res *Results, send func(tea.Msg)) {
+httpURLs := make([]string, 0, len(res.HTTP))
+for _, h := range res.HTTP {
+httpURLs = append(httpURLs, h.URL)
+}
+res.LFI = lfi.Detect(httpURLs, e.cfg.Threads, func(r lfi.Result) {
+if r.Detected {
+send(ui.ItemMsg{
+Icon: styleRed.Render("⚡"),
+Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Param) + " [lfi:" + r.OS + "]",
+})
+}
+})
+}
+
+func step29(e *Engine, res *Results, send func(tea.Msg)) {
+res.HostHeader = hostheader.Detect(baseURLs(res), e.cfg.Threads, func(r hostheader.Result) {
+if r.Vulnerable {
+send(ui.ItemMsg{
+Icon: styleYellow.Render("⚡"),
+Text: styleMuted.Render(r.URL) + styleYellow.Render(" "+r.Header) + " [hostheader]",
+})
+}
+})
+}
+
+func step30(e *Engine, res *Results, send func(tea.Msg)) {
+res.JWT = jwt.Analyze(res.HTTP, e.cfg.Threads, func(r jwt.Result) {
+send(ui.ItemMsg{
+Icon: styleYellow.Render("🔑"),
+Text: styleMuted.Render(r.URL) + "  " + styleYellow.Render(r.Issue),
+})
+})
+}
+
+func step31(e *Engine, res *Results, send func(tea.Msg)) {
+res.Wayback = wayback.Fetch(e.cfg.Target, func(r wayback.Result) {
+send(ui.ItemMsg{
+Icon: styleMuted.Render("◈"),
+Text: styleMuted.Render(r.URL) + "  " + styleMuted.Render(r.Timestamp),
+})
+})
+}
+
+func step32(e *Engine, res *Results, send func(tea.Msg)) {
+if e.cfg.ShodanKey == "" {
+return
+}
+seenIP := map[string]bool{}
+var ips []string
+for _, p := range res.Ports {
+if !seenIP[p.IP] && p.IP != "" {
+seenIP[p.IP] = true
+ips = append(ips, p.IP)
+}
+}
+res.Shodan = shodan.Lookup(ips, e.cfg.ShodanKey, e.cfg.Threads, func(r shodan.Result) {
+send(ui.ItemMsg{
+Icon: styleMuted.Render("◈"),
+Text: styleMuted.Render(r.IP) + "  " + styleYellow.Render(r.ISP) + "  " + styleMuted.Render(r.Country),
+})
+})
+}
+
+func step33(e *Engine, res *Results, send func(tea.Msg)) {
+httpURLs := make([]string, 0, len(res.HTTP))
+for _, h := range res.HTTP {
+httpURLs = append(httpURLs, h.URL)
+}
+res.XXE = xxe.Detect(httpURLs, e.cfg.Threads, func(r xxe.Result) {
+if r.Detected {
+send(ui.ItemMsg{
+Icon: styleRed.Render("⚡"),
+Text: styleMuted.Render(r.URL) + " [xxe]",
+})
+}
+})
+}
+
+func step34(e *Engine, res *Results, send func(tea.Msg)) {
+httpURLs := make([]string, 0, len(res.HTTP))
+for _, h := range res.HTTP {
+httpURLs = append(httpURLs, h.URL)
+}
+res.CmdI = cmdi.Detect(httpURLs, e.cfg.Threads, func(r cmdi.Result) {
+if r.Detected {
+send(ui.ItemMsg{
+Icon: styleRed.Render("⚡"),
+Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Param) + " [cmdi:" + r.Method + "]",
+})
+}
+})
+}
+
 var steps = []StepFunc{
 step0, step1, step2, step3, step4, step5,
 step6, step7, step8, step9, step10, step11,
 step12, step13, step14, step15, step16, step17,
 step18, step19, step20, step21, step22, step23,
-step24, step25,
+step24, step25, step26, step27, step28, step29,
+step30, step31, step32, step33, step34,
 }
 
 func (e *Engine) Run(send func(tea.Msg), stateObj *state.State, stateFile string, ms map[int]bool) *Results {
@@ -640,6 +786,24 @@ case 24:
 return len(res.RateLimit)
 case 25:
 return len(res.Templates)
+case 26:
+return len(res.XSS)
+case 27:
+return len(res.SSRF)
+case 28:
+return len(res.LFI)
+case 29:
+return len(res.HostHeader)
+case 30:
+return len(res.JWT)
+case 31:
+return len(res.Wayback)
+case 32:
+return len(res.Shodan)
+case 33:
+return len(res.XXE)
+case 34:
+return len(res.CmdI)
 }
 return 0
 }
@@ -740,6 +904,39 @@ out = append(out, t.ToFinding())
 for _, d := range res.DefaultCreds {
 if d.Found {
 out = append(out, d.ToFinding())
+}
+}
+for _, x := range res.XSS {
+if x.Reflected {
+out = append(out, x.ToFinding())
+}
+}
+for _, s := range res.SSRF {
+if s.Detected {
+out = append(out, s.ToFinding())
+}
+}
+for _, l := range res.LFI {
+if l.Detected {
+out = append(out, l.ToFinding())
+}
+}
+for _, h := range res.HostHeader {
+if h.Vulnerable {
+out = append(out, h.ToFinding())
+}
+}
+for _, j := range res.JWT {
+out = append(out, j.ToFinding())
+}
+for _, x := range res.XXE {
+if x.Detected {
+out = append(out, x.ToFinding())
+}
+}
+for _, c := range res.CmdI {
+if c.Detected {
+out = append(out, c.ToFinding())
 }
 }
 return out

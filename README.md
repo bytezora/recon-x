@@ -5,7 +5,7 @@
 ![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-Attack-surface scanner for bug bounty and pentest recon. One command runs 26 modules — passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, GraphQL, templates — and outputs a self-contained HTML report plus JSON and SARIF.
+Attack-surface scanner for bug bounty and pentest recon. One command runs 35 modules — passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, XSS, SSRF, LFI, Host Header Injection, JWT analysis, Wayback Machine, Shodan, XXE, Command Injection, GraphQL, templates — and outputs a self-contained HTML report plus JSON, SARIF and Markdown.
 
 > Findings are indicators, not confirmed vulnerabilities. Scan only authorized targets.
 
@@ -37,13 +37,19 @@ docker run --rm ghcr.io/bytezora/recon-x:latest -target example.com
 recon-x -target example.com
 
 # specific modules only
-recon-x -target example.com -modules subdomain,port,http,sqli,cors
+recon-x -target example.com -modules subdomain,port,http,sqli,xss,ssrf,lfi
 
 # with Burp proxy + GitHub token
 recon-x -target example.com -proxy http://127.0.0.1:8080 -github-token ghp_xxx
 
-# output to JSON and SARIF as well
-recon-x -target example.com -json out.json -sarif out.sarif
+# output to JSON, SARIF and Markdown
+recon-x -target example.com -json out.json -sarif out.sarif -markdown report.md
+
+# compare with previous scan (diff report)
+recon-x -target example.com -json new.json -diff old.json
+
+# Shodan passive recon
+recon-x -target example.com -shodan-key YOUR_SHODAN_KEY
 
 # resume interrupted scan
 recon-x -target example.com -resume
@@ -60,6 +66,8 @@ cat targets.txt | recon-x
 | `-output` | `report.html` | HTML output path |
 | `-json` | | JSON output path |
 | `-sarif` | | SARIF 2.1.0 output path |
+| `-markdown` | | Markdown report output path |
+| `-diff` | | Compare with previous JSON scan file |
 | `-modules` | all | Comma-separated module names |
 | `-ports` | 17 common | Custom port list |
 | `-threads` | `50` | Concurrency |
@@ -68,6 +76,7 @@ cat targets.txt | recon-x
 | `-resolver` | system DNS | Custom DNS resolver (`1.1.1.1:53`) |
 | `-proxy` | | HTTP/HTTPS proxy (Burp, ZAP) |
 | `-github-token` | | GitHub token for dorking |
+| `-shodan-key` | | Shodan API key for passive recon |
 | `-scope-file` | | In-scope entries, one per line |
 | `-config` | | YAML config file |
 | `-resume` | | Continue from last completed step |
@@ -87,7 +96,7 @@ cat targets.txt | recon-x
 | # | Name | Description |
 |---|------|-------------|
 | 1 | passive | crt.sh, CertSpotter, HackerTarget, AlienVault, URLScan |
-| 2 | subdomain | DNS brute-force |
+| 2 | subdomain | DNS brute-force + wildcard DNS detection |
 | 3 | port | TCP scan + banner grab |
 | 4 | http | HTTP fingerprint, tech stack, WAF, CVE match |
 | 5 | dir | Directory brute-force |
@@ -108,10 +117,19 @@ cat targets.txt | recon-x
 | 20 | graphql | GraphQL probe + introspection |
 | 21 | email | SPF / DMARC / DKIM, spoofability |
 | 22 | admin | Admin panel discovery (50+ paths) |
-| 23 | sqli | SQLi — error-based + time-based baseline |
+| 23 | sqli | SQLi — error-based + time-based + boolean-blind + POST/JSON |
 | 24 | creds | Default credentials check |
 | 25 | ratelimit | Rate-limit header detection |
 | 26 | templates | 54 built-in YAML templates + custom |
+| 27 | xss | Reflected XSS — URL params + headers, context detection |
+| 28 | ssrf | SSRF — AWS metadata, loopback injection in URL params |
+| 29 | lfi | Path Traversal / LFI — Linux & Windows file signatures |
+| 30 | hostheader | Host Header Injection — 6 header variants, canary reflection |
+| 31 | jwt | JWT analysis — alg:none, missing exp, sensitive claims |
+| 32 | wayback | Wayback Machine — historical endpoints via CDX API |
+| 33 | shodan | Shodan passive recon — open ports, banners, vulns (API key required) |
+| 34 | xxe | XXE — XML external entity injection via POST endpoints |
+| 35 | cmdi | Command Injection — error-based, time-based, output-based |
 
 ---
 
@@ -126,9 +144,11 @@ WAF fingerprinting: Cloudflare, Akamai, Imperva, AWS WAF, F5, Barracuda, ModSecu
 ## Output
 
 ```
-report.html   self-contained dark report, tabbed, all 26 modules
+report.html   self-contained dark report, tabbed, all 35 modules
+report.md     Markdown report — CI-friendly, readable in GitHub
 out.json      machine-readable, full results
 out.sarif     SARIF 2.1.0 — GitHub Code Scanning / Defect Dojo
+diff.txt      delta between two scans — new/resolved findings
 ```
 
 ![Report](assets/report.png)
@@ -143,8 +163,9 @@ threads: 100
 rate: 30
 retries: 3
 resolver: 1.1.1.1:53
-modules: [subdomain, port, http, tls, sqli, admin, cors]
+modules: [subdomain, port, http, tls, sqli, xss, ssrf, lfi, admin, cors]
 github_token: ghp_xxxx
+shodan_key: YOUR_SHODAN_KEY
 output_dir: ./results
 notify_slack: https://hooks.slack.com/...
 notify_telegram: TOKEN@CHATID
