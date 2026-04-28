@@ -23,7 +23,7 @@ tea "github.com/charmbracelet/bubbletea"
 "github.com/bytezora/recon-x/ui"
 )
 
-var version = "2.0.0"
+var version = "2.1.0"
 
 const defaultPorts = "21,22,25,53,80,110,143,443,445,3306,5432,6379,8080,8443,8888,9000,27017"
 
