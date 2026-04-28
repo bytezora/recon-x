@@ -30,6 +30,8 @@ func Enumerate(target string, threads int, wordlistFile string, resolverAddr str
 	wg       := sync.WaitGroup{}
 	resolver := newResolver(resolverAddr)
 
+	isWildcard, wildcardIPs := DetectWildcard(target, resolverAddr)
+
 	for _, word := range words {
 		host := fmt.Sprintf("%s.%s", word, target)
 		sem <- struct{}{}
@@ -57,6 +59,9 @@ func Enumerate(target string, threads int, wordlistFile string, resolverAddr str
 	}
 
 	wg.Wait()
+	if isWildcard {
+		results = wildcardFilter(results, wildcardIPs)
+	}
 	return results
 }
 
@@ -75,8 +80,8 @@ func AddPassive(existing []Result, names []string, resolverAddr string, onFound 
 		seen[name] = true
 
 		ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
+		defer cancel()
 		ips, err := resolver.LookupHost(ctx, name)
-		cancel()
 		if err != nil {
 			ips = []string{}
 		}
@@ -114,3 +119,4 @@ func newResolver(addr string) *net.Resolver {
 		},
 	}
 }
+

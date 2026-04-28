@@ -145,8 +145,8 @@ func Scan(subs []subdomain.Result, ports []int, threads int, onFound func(Result
 					if err != nil {
 						return
 					}
-					bannerStr := banner.GrabConn(conn, p)
-					conn.Close()
+					defer conn.Close()
+						bannerStr := banner.GrabConn(conn, p)
 					svc := serviceNames[p]
 					if svc == "" {
 						svc = banner.GuessService(bannerStr, p)
@@ -228,3 +228,5 @@ func increment(ip net.IP) {
 		}
 	}
 }
+
+
