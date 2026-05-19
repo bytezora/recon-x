@@ -5,6 +5,7 @@ import (
 "flag"
 "fmt"
 "os"
+"path/filepath"
 "strconv"
 "strings"
 "time"
@@ -295,14 +296,15 @@ cfg.Resolver = fileCfg.Resolver
 
 if cfg.OutputDir != "" {
 if err := os.MkdirAll(cfg.OutputDir, 0755); err == nil {
-if cfg.Output == "report.html" {
-cfg.Output = cfg.OutputDir + "/report.html"
-}
+cfg.Output = filepath.Join(cfg.OutputDir, filepath.Base(cfg.Output))
 if cfg.JSON != "" {
-cfg.JSON = cfg.OutputDir + "/report.json"
+cfg.JSON = filepath.Join(cfg.OutputDir, filepath.Base(cfg.JSON))
 }
 if cfg.SARIF != "" {
-cfg.SARIF = cfg.OutputDir + "/report.sarif"
+cfg.SARIF = filepath.Join(cfg.OutputDir, filepath.Base(cfg.SARIF))
+}
+if cfg.MarkdownOut != "" {
+cfg.MarkdownOut = filepath.Join(cfg.OutputDir, filepath.Base(cfg.MarkdownOut))
 }
 }
 }
