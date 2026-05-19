@@ -5,8 +5,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/finding"
 )
 
 type Result struct {
@@ -26,7 +29,7 @@ var weakProtos = map[uint16]bool{
 }
 
 var weakCiphers = map[uint16]bool{
-	0x0004: true, // TLS_RSA_WITH_RC4_128_MD5
+	0x0004:                               true, // TLS_RSA_WITH_RC4_128_MD5
 	tls.TLS_RSA_WITH_RC4_128_SHA:         true,
 	tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:    true,
 	tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:   true,
@@ -40,9 +43,9 @@ type Target struct {
 
 func Check(targets []Target, threads int, onFound func(Result)) []Result {
 	var results []Result
-	mu  := sync.Mutex{}
+	mu := sync.Mutex{}
 	sem := make(chan struct{}, threads)
-	wg  := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for _, t := range targets {
 		sem <- struct{}{}
@@ -145,5 +148,19 @@ func protoName(v uint16) string {
 		return "TLS 1.3"
 	default:
 		return fmt.Sprintf("0x%04x", v)
+	}
+}
+
+func (r Result) ToFinding() finding.Finding {
+	return finding.Finding{
+		Type:               "tls_misconfiguration",
+		Severity:           finding.Medium,
+		Confidence:         finding.Likely,
+		Title:              "TLS Misconfiguration",
+		AffectedURL:        fmt.Sprintf("%s:%d", r.Host, r.Port),
+		Evidence:           strings.Join(r.Issues, "; "),
+		Reason:             "TLS configuration presents security weaknesses.",
+		Remediation:        "Use modern TLS (1.2+), strong ciphers, valid certificates, and correct SANs.",
+		ManualVerification: false,
 	}
 }

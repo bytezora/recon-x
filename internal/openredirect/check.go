@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
@@ -112,4 +113,18 @@ func testParam(client *http.Client, baseURL, param string) *Result {
 		}
 	}
 	return nil
+}
+
+func (r Result) ToFinding() finding.Finding {
+	return finding.Finding{
+		Type:               "open_redirect",
+		Severity:           finding.Medium,
+		Confidence:         finding.Confirmed,
+		Title:              "Open Redirect",
+		AffectedURL:        r.BaseURL,
+		Evidence:           "param=" + r.Param + ", location=" + r.Location,
+		Reason:             "Untrusted redirect parameter allows external redirection.",
+		Remediation:        "Allow-list redirect targets or use relative internal redirects only.",
+		ManualVerification: false,
+	}
 }

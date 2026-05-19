@@ -180,3 +180,37 @@ templates:
 ---
 
 MIT · authorized targets only
+---
+
+## Что улучшить, чтобы recon-x стал полноценным инструментом
+
+1. **Подтверждение уязвимостей (verification mode)**
+   - Добавить безопасные проверяющие PoC-флоу для high-confidence находок (например, SSRF, open redirect, misconfigured CORS), чтобы снижать false positive.
+
+2. **Asset inventory и приоритизация рисков**
+   - Вести инвентарь активов (хосты, сервисы, технологии, владельцы) и считать risk score по CVSS + exposure + business-criticality.
+
+3. **История сканов и baseline-аналитика**
+   - Хранить результаты в SQLite/PostgreSQL, показывать тренды: новые/закрытые проблемы, MTTR, повторяющиеся регрессии.
+
+4. **Интеграции в DevSecOps**
+   - Добавить ready-made интеграции для GitHub Actions/GitLab CI/Jenkins и push в Jira, DefectDojo, SIEM (Splunk/Elastic).
+
+5. **Distributed scanning и очередь задач**
+   - Разделить orchestrator и worker-нод, чтобы масштабировать сканирование на большие scope через очередь (NATS/RabbitMQ/SQS).
+
+6. **Расширяемая plugin система**
+   - Стабильный SDK для внешних модулей (Go/Lua/WASM), версия API плагинов и marketplace с сигнатурами и проверкой целостности.
+
+7. **Безопасность и governance самого инструмента**
+   - RBAC, audit log, encrypted secrets, policy guardrails (allowed scopes, rate caps, banned payload classes) и legal-safe режимы по умолчанию.
+
+8. **Качество детекта и reproducibility**
+   - Детализировать evidence в отчетах (raw request/response, timestamp, module version, replay command), чтобы находки легко воспроизводились.
+
+9. **Discovery depth**
+   - Усилить веб-кроулинг (JS runtime crawling, form discovery, auth-aware crawling, API schema discovery для REST/GraphQL).
+
+10. **Операционная зрелость**
+   - Добавить профили производительности, health-checks, self-diagnostics, автоматические retry/backoff стратегии, и SLO-метрики.
+

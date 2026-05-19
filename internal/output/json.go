@@ -26,6 +26,7 @@ import (
 	"github.com/bytezora/recon-x/internal/defaultcreds"
 	"github.com/bytezora/recon-x/internal/emailsec"
 	"github.com/bytezora/recon-x/internal/favicon"
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/graphql"
 	"github.com/bytezora/recon-x/internal/ratelimit"
 	"github.com/bytezora/recon-x/internal/sqli"
@@ -64,6 +65,7 @@ type Report struct {
 	DefaultCreds []defaultcreds.Result `json:"default_creds,omitempty"`
 	RateLimit    []ratelimit.Result    `json:"rate_limit,omitempty"`
 	Templates    []templates.Match     `json:"templates,omitempty"`
+	Findings     []finding.Finding     `json:"findings,omitempty"`
 }
 
 func WriteJSON(
@@ -95,6 +97,7 @@ func WriteJSON(
 	defaultCreds []defaultcreds.Result,
 	rateLimit    []ratelimit.Result,
 	tplMatches   []templates.Match,
+	findings     []finding.Finding,
 ) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -134,5 +137,6 @@ func WriteJSON(
 		DefaultCreds: defaultCreds,
 		RateLimit:    rateLimit,
 		Templates:    tplMatches,
+		Findings:     findings,
 	})
 }
