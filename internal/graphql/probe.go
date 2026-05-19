@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bytezora/recon-x/internal/finding"
 )
 
 type Result struct {
@@ -126,4 +128,22 @@ func introspect(endpoint string) ([]string, bool) {
 		return nil, false
 	}
 	return types, true
+}
+
+func (r Result) ToFinding() finding.Finding {
+	ev := "endpoint=" + r.Endpoint
+	if len(r.Types) > 0 {
+		ev += ", types=" + strings.Join(r.Types, ",")
+	}
+	return finding.Finding{
+		Type:               "graphql_introspection",
+		Severity:           finding.Medium,
+		Confidence:         finding.Confirmed,
+		Title:              "GraphQL Introspection Exposed",
+		AffectedURL:        r.Endpoint,
+		Evidence:           ev,
+		Reason:             "GraphQL schema metadata is accessible and can aid attack surface mapping.",
+		Remediation:        "Disable introspection in production or restrict it to trusted users.",
+		ManualVerification: false,
+	}
 }

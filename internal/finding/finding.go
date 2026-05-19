@@ -31,4 +31,6 @@ type Finding struct {
 	CVE                string     `json:"cve,omitempty"`
 	CVSS               float64    `json:"cvss,omitempty"`
 	References         []string   `json:"references,omitempty"`
+	RiskScore          int        `json:"risk_score"`
+	Priority           string     `json:"priority"`
 }
