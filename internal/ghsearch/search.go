@@ -24,8 +24,8 @@ var keywords = []string{
 }
 
 type ghItem struct {
-	Path    string `json:"path"`
-	HTMLURL string `json:"html_url"`
+	Path       string `json:"path"`
+	HTMLURL    string `json:"html_url"`
 	Repository struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`

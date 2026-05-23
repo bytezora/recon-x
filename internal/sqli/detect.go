@@ -611,35 +611,35 @@ func cloneJSON(src map[string]interface{}) map[string]interface{} {
 }
 
 func (r Result) ToFinding() finding.Finding {
-conf := finding.Possible
-manualVerify := true
-switch r.Confidence {
-case "confirmed":
-conf = finding.Confirmed
-manualVerify = false
-case "high":
-conf = finding.Likely
-}
+	conf := finding.Possible
+	manualVerify := true
+	switch r.Confidence {
+	case "confirmed":
+		conf = finding.Confirmed
+		manualVerify = false
+	case "high":
+		conf = finding.Likely
+	}
 
-reason := "SQL injection indicator detected in HTTP response"
-switch r.Method {
-case "boolean-blind":
-reason = "Boolean-blind SQLi: true-condition response (1=1) differs from false-condition (1=2) — server evaluates the injected logic"
-case "time-based":
-reason = "Time-based blind SQLi: server response delayed by SQL SLEEP/WAITFOR payload — confirms backend SQL execution"
-case "error-based":
-reason = "Error-based SQLi: SQL engine error message leaked directly in HTTP response"
-}
+	reason := "SQL injection indicator detected in HTTP response"
+	switch r.Method {
+	case "boolean-blind":
+		reason = "Boolean-blind SQLi: true-condition response (1=1) differs from false-condition (1=2) — server evaluates the injected logic"
+	case "time-based":
+		reason = "Time-based blind SQLi: server response delayed by SQL SLEEP/WAITFOR payload — confirms backend SQL execution"
+	case "error-based":
+		reason = "Error-based SQLi: SQL engine error message leaked directly in HTTP response"
+	}
 
-return finding.Finding{
-Type:               "sqli",
-Severity:           finding.High,
-Confidence:         conf,
-Title:              "SQL Injection — parameter: " + r.Param,
-AffectedURL:        r.URL,
-Evidence:           r.Evidence,
-Reason:             reason,
-Remediation:        "Use parameterized queries / prepared statements. Never interpolate user input into SQL strings.",
-ManualVerification: manualVerify,
-}
+	return finding.Finding{
+		Type:               "sqli",
+		Severity:           finding.High,
+		Confidence:         conf,
+		Title:              "SQL Injection — parameter: " + r.Param,
+		AffectedURL:        r.URL,
+		Evidence:           r.Evidence,
+		Reason:             reason,
+		Remediation:        "Use parameterized queries / prepared statements. Never interpolate user input into SQL strings.",
+		ManualVerification: manualVerify,
+	}
 }

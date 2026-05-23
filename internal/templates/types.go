@@ -1,12 +1,12 @@
 package templates
 
 type Template struct {
-	ID       string            `yaml:"id"`
-	Name     string            `yaml:"name"`
-	Severity string            `yaml:"severity"`
-	Tags     []string          `yaml:"tags"`
-	Request  RequestDef        `yaml:"request"`
-	Matchers []MatcherDef      `yaml:"matchers"`
+	ID       string       `yaml:"id"`
+	Name     string       `yaml:"name"`
+	Severity string       `yaml:"severity"`
+	Tags     []string     `yaml:"tags"`
+	Request  RequestDef   `yaml:"request"`
+	Matchers []MatcherDef `yaml:"matchers"`
 }
 
 type RequestDef struct {
@@ -24,10 +24,10 @@ type MatcherDef struct {
 }
 
 type Match struct {
-	TemplateID string `json:"template_id"`
-	Name       string `json:"name"`
-	Severity   string `json:"severity"`
+	TemplateID string   `json:"template_id"`
+	Name       string   `json:"name"`
+	Severity   string   `json:"severity"`
 	Tags       []string `json:"tags"`
-	URL        string `json:"url"`
-	Matched    string `json:"matched"`
+	URL        string   `json:"url"`
+	Matched    string   `json:"matched"`
 }

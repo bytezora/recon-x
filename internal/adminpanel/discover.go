@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytezora/recon-x/internal/httpclient"
 	"github.com/bytezora/recon-x/internal/httpcheck"
+	"github.com/bytezora/recon-x/internal/httpclient"
 )
 
 type Result struct {

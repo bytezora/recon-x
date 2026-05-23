@@ -4,18 +4,47 @@
   <img src="assets/logo.png" alt="recon-x logo" width="480"/>
 </p>
 
-[![Release](https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square)](https://github.com/bytezora/recon-x/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/bytezora/recon-x/build.yml?style=flat-square)](https://github.com/bytezora/recon-x/actions)
-![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+<p align="center">
+  <a href="https://github.com/bytezora/recon-x/releases"><img src="https://img.shields.io/github/v/release/bytezora/recon-x?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/bytezora/recon-x/actions"><img src="https://img.shields.io/github/actions/workflow/status/bytezora/recon-x/build.yml?style=flat-square" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?style=flat-square&logo=go" alt="Go 1.25+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
+</p>
 
-Attack-surface scanner for bug bounty and pentest recon. One command runs 35 modules — passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, XSS, SSRF, LFI, Host Header Injection, JWT analysis, Wayback Machine, Shodan, XXE, Command Injection, GraphQL, templates — and outputs a self-contained HTML report plus JSON, SARIF and Markdown.
+<p align="center">
+  <b>Fast attack-surface reconnaissance with CVE evidence, Nmap import, SARIF, Markdown and self-contained HTML reports.</b>
+</p>
+
+`recon-x` is an authorized security reconnaissance tool for bug bounty, pentest and DevSecOps workflows. One command runs 35 modules across passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, XSS, SSRF, LFI, Host Header Injection, JWT analysis, Wayback Machine, Shodan, XXE, Command Injection, GraphQL and custom templates.
 
 > Findings are indicators, not confirmed vulnerabilities. Scan only authorized targets.
 
 ![Terminal](assets/terminal.png)
 
 ---
+
+## Highlights
+
+| Area | Capability |
+|------|------------|
+| Discovery | Passive OSINT, subdomain brute-force, vhost discovery, ASN, WHOIS, Wayback and Shodan enrichment |
+| Network | TCP ports, banner grabbing, Nmap XML import, HTTP probing, TLS checks and screenshots |
+| Web checks | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection |
+| CVE intelligence | Offline signatures, live NVD enrichment, CISA KEV, FIRST EPSS, CPE fingerprints and strict precision profiles |
+| Evidence | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs |
+| Reporting | Self-contained HTML, JSON, Markdown, SARIF and scan-to-scan diffing |
+
+## Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [Flags](#flags)
+- [Modules](#modules)
+- [CVE matching](#cve-matching)
+- [Output](#output)
+- [Config file](#config-file)
+- [Documentation](#documentation)
+- [Safety](#safety)
 
 ## Install
 
@@ -55,6 +84,20 @@ recon-x -target example.com -json new.json -diff old.json
 # Shodan passive recon
 recon-x -target example.com -shodan-key YOUR_SHODAN_KEY
 
+# live CVE enrichment with NVD + CISA KEV + FIRST EPSS
+recon-x -target example.com -cve-live -nvd-api-key YOUR_NVD_API_KEY
+
+# high-precision CVE mode using Nmap service detection
+nmap -sV -oX nmap.xml example.com
+recon-x -target example.com -nmap-xml nmap.xml -skip-portscan -cve-live -cve-profile strict
+
+# prove CVE accuracy against a ground-truth lab dataset
+recon-x -target lab.local -nmap-xml nmap.xml -skip-portscan -cve-live -cve-profile strict -json scan.json
+recon-x -cve-evidence docs/cve-evidence-example.json -cve-evidence-scan scan.json -cve-evidence-report evidence.json -cve-evidence-markdown evidence.md
+
+# evaluate whether a real domain scan is strong enough for a 90% public-service CVE claim
+recon-x -cve-assurance scan.json -cve-assurance-report assurance.json -cve-assurance-markdown assurance.md
+
 # resume interrupted scan
 recon-x -target example.com -resume
 
@@ -81,6 +124,25 @@ cat targets.txt | recon-x
 | `-proxy` | | HTTP/HTTPS proxy (Burp, ZAP) |
 | `-github-token` | | GitHub token for dorking |
 | `-shodan-key` | | Shodan API key for passive recon |
+| `-cve-live` | | Enrich detected CPEs from live NVD, CISA KEV and FIRST EPSS feeds |
+| `-nvd-api-key` | | NVD API key for higher CVE enrichment rate limits |
+| `-cve-timeout` | `45` | Timeout in seconds for live CVE enrichment |
+| `-nmap-xml` | | Import Nmap XML (`-oX`) service/version/CPE results |
+| `-skip-portscan` | | Skip built-in TCP scan, useful when importing Nmap XML |
+| `-cve-profile` | `balanced` | CVE precision profile: `balanced`, `strict`, `broad`, `kev` |
+| `-cve-min-confidence` | | Minimum CVE confidence: `low`, `medium`, `high`, `confirmed` |
+| `-cve-require-version` | | Report CVEs only when product version evidence exists |
+| `-cve-only-kev` | | Report only CISA KEV known-exploited CVEs |
+| `-cve-min-cvss` | `0` | Minimum CVSS for CVE reporting |
+| `-cve-evidence` | | Ground-truth JSON file for CVE accuracy proof mode |
+| `-cve-evidence-scan` | | Recon-x JSON report to compare with `-cve-evidence` |
+| `-cve-evidence-report` | `cve-evidence.json` | Machine-readable evidence report |
+| `-cve-evidence-markdown` | | Human-readable evidence report |
+| `-cve-evidence-threshold` | `0.90` | Minimum precision and recall required for PASS |
+| `-cve-assurance` | | Recon-x JSON report to evaluate 90% CVE claim readiness for an authorized domain |
+| `-cve-assurance-report` | `cve-assurance.json` | Machine-readable assurance report |
+| `-cve-assurance-markdown` | | Human-readable assurance report |
+| `-cve-assurance-threshold` | `0.90` | Minimum evidence coverage required for public-service CVE assurance |
 | `-scope-file` | | In-scope entries, one per line |
 | `-config` | | YAML config file |
 | `-resume` | | Continue from last completed step |
@@ -139,7 +201,52 @@ cat targets.txt | recon-x
 
 ## CVE matching
 
-190+ signatures — Apache, nginx, OpenSSH, Tomcat, Spring, Log4j, Redis, WordPress, Jenkins, GitLab, Kubernetes, Fortinet, Citrix, F5 and more. Matches on banners, headers, response bodies. Each match tagged `high / medium / low` confidence. Database is SHA-256 integrity-protected.
+190+ offline signatures — Apache, nginx, OpenSSH, Tomcat, Spring, Log4j, Redis, WordPress, Jenkins, GitLab, Kubernetes, Fortinet, Citrix, F5 and more. Matches on banners, headers, response bodies and version-probe endpoints. Each detected service is normalized into a product/version/CPE fingerprint where possible.
+
+Optional live enrichment (`-cve-live`) queries NVD CVE data by CPE and enriches matches with CISA Known Exploited Vulnerabilities and FIRST EPSS probability/percentile. Results include source, CPE, product, version, confidence and priority (`P0`–`P3`). The embedded database remains SHA-256 integrity-protected for offline use.
+
+For higher precision, import Nmap service/version output with `-nmap-xml` and use `-cve-profile strict`. The strict profile suppresses low-confidence product-only CVE guesses and keeps confirmed or high-confidence versioned matches. Reports include CVE policy diagnostics: before/after counts, filtered CVEs, NVD match counts, KEV/EPSS enrichment counts and NVD errors.
+
+### CVE evidence mode
+
+Claims like "90% CVE accuracy" are only valid against a known ground-truth dataset. `-cve-evidence` compares a recon-x JSON scan with an expected CVE list and produces reproducible proof: TP/FP/FN, precision, recall, F1, dataset SHA-256, scan SHA-256 and CVE DB hash. The command exits with code `0` only when both precision and recall meet the threshold; otherwise it exits with code `2`, which makes it CI-friendly.
+
+Ground truth format:
+
+```json
+{
+  "name": "local vulnerable lab",
+  "source": "Docker lab + vendor advisories",
+  "cases": [
+    {
+      "name": "Apache httpd 2.4.49",
+      "host": "lab.local",
+      "port": 8080,
+      "product": "apache",
+      "version": "2.4.49",
+      "expected_cves": ["CVE-2021-41773", "CVE-2021-42013"]
+    }
+  ]
+}
+```
+
+This mode is intentionally strict: findings outside the listed cases count as false positives unless `scope_unknown_as_fp` is set to `false` in the truth file.
+
+### CVE assurance mode for real domains
+
+`-cve-assurance` works on any recon-x JSON scan and answers a different question: is this scan strong enough to make a high-confidence 90% claim for **publicly visible service/version CVEs**? It checks version coverage, CPE coverage, live NVD coverage, NVD errors, strict CVE filtering and finding confidence. It also explicitly marks **whole-domain all-CVE 90%** as not provable from external unauthenticated scanning alone.
+
+This is the correct workflow for real domains:
+
+```bash
+nmap -sV -oX nmap.xml example.com
+recon-x -target example.com -nmap-xml nmap.xml -skip-portscan -cve-live -cve-profile strict -cve-require-version -json scan.json
+recon-x -cve-assurance scan.json -cve-assurance-report assurance.json -cve-assurance-markdown assurance.md
+```
+
+If the assurance report fails, it lists exactly what is missing: version evidence, CPE evidence, NVD enrichment, stricter policy, or internal evidence such as SBOM/package inventory/authenticated context.
+
+See [docs/CVE_EVIDENCE.md](docs/CVE_EVIDENCE.md) for the full proof methodology and CI-friendly PASS/FAIL workflow.
 
 WAF fingerprinting: Cloudflare, Akamai, Imperva, AWS WAF, F5, Barracuda, ModSecurity, Fortinet.
 
@@ -170,6 +277,14 @@ resolver: 1.1.1.1:53
 modules: [subdomain, port, http, tls, sqli, xss, ssrf, lfi, admin, cors]
 github_token: ghp_xxxx
 shodan_key: YOUR_SHODAN_KEY
+cve_live: true
+nvd_api_key: YOUR_NVD_API_KEY
+cve_timeout: 45
+nmap_xml: ./nmap.xml
+skip_portscan: true
+cve_profile: strict
+cve_require_version: true
+cve_min_confidence: high
 output_dir: ./results
 notify_slack: https://hooks.slack.com/...
 notify_telegram: TOKEN@CHATID
@@ -179,38 +294,16 @@ templates:
 
 ---
 
-MIT · authorized targets only
+## Documentation
+
+- [CVE evidence methodology](docs/CVE_EVIDENCE.md)
+- [CVE evidence example](docs/cve-evidence-example.json)
+- [Roadmap](docs/ROADMAP.md)
+
+## Safety
+
+`recon-x` is built for authorized security testing. Keep scans inside an approved scope, use rate limits where needed, and validate findings manually before reporting impact.
+
 ---
 
-## Что улучшить, чтобы recon-x стал полноценным инструментом
-
-1. **Подтверждение уязвимостей (verification mode)**
-   - Добавить безопасные проверяющие PoC-флоу для high-confidence находок (например, SSRF, open redirect, misconfigured CORS), чтобы снижать false positive.
-
-2. **Asset inventory и приоритизация рисков**
-   - Вести инвентарь активов (хосты, сервисы, технологии, владельцы) и считать risk score по CVSS + exposure + business-criticality.
-
-3. **История сканов и baseline-аналитика**
-   - Хранить результаты в SQLite/PostgreSQL, показывать тренды: новые/закрытые проблемы, MTTR, повторяющиеся регрессии.
-
-4. **Интеграции в DevSecOps**
-   - Добавить ready-made интеграции для GitHub Actions/GitLab CI/Jenkins и push в Jira, DefectDojo, SIEM (Splunk/Elastic).
-
-5. **Distributed scanning и очередь задач**
-   - Разделить orchestrator и worker-нод, чтобы масштабировать сканирование на большие scope через очередь (NATS/RabbitMQ/SQS).
-
-6. **Расширяемая plugin система**
-   - Стабильный SDK для внешних модулей (Go/Lua/WASM), версия API плагинов и marketplace с сигнатурами и проверкой целостности.
-
-7. **Безопасность и governance самого инструмента**
-   - RBAC, audit log, encrypted secrets, policy guardrails (allowed scopes, rate caps, banned payload classes) и legal-safe режимы по умолчанию.
-
-8. **Качество детекта и reproducibility**
-   - Детализировать evidence в отчетах (raw request/response, timestamp, module version, replay command), чтобы находки легко воспроизводились.
-
-9. **Discovery depth**
-   - Усилить веб-кроулинг (JS runtime crawling, form discovery, auth-aware crawling, API schema discovery для REST/GraphQL).
-
-10. **Операционная зрелость**
-   - Добавить профили производительности, health-checks, self-diagnostics, автоматические retry/backoff стратегии, и SLO-метрики.
-
+MIT · authorized targets only

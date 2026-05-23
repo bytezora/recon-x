@@ -28,9 +28,9 @@ func Capture(urls []string, threads int, onFound func(Result)) []Result {
 	}
 
 	var results []Result
-	mu  := sync.Mutex{}
+	mu := sync.Mutex{}
 	sem := make(chan struct{}, cap)
-	wg  := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for _, u := range urls {
 		sem <- struct{}{}

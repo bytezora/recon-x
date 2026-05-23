@@ -25,9 +25,9 @@ type Result struct {
 func Enumerate(target string, threads int, wordlistFile string, resolverAddr string, onFound func(Result)) []Result {
 	words := loadWords(wordlistFile)
 	results := make([]Result, 0, 32)
-	mu       := sync.Mutex{}
-	sem      := make(chan struct{}, threads)
-	wg       := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	sem := make(chan struct{}, threads)
+	wg := sync.WaitGroup{}
 	resolver := newResolver(resolverAddr)
 
 	isWildcard, wildcardIPs := DetectWildcard(target, resolverAddr)
@@ -121,4 +121,3 @@ func newResolver(addr string) *net.Resolver {
 		},
 	}
 }
-

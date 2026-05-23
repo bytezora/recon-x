@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -28,6 +30,7 @@ import (
 	"github.com/bytezora/recon-x/internal/jsscan"
 	"github.com/bytezora/recon-x/internal/jwt"
 	"github.com/bytezora/recon-x/internal/lfi"
+	"github.com/bytezora/recon-x/internal/nmapxml"
 	"github.com/bytezora/recon-x/internal/notify"
 	"github.com/bytezora/recon-x/internal/openredirect"
 	"github.com/bytezora/recon-x/internal/passive"
@@ -62,74 +65,87 @@ var (
 )
 
 type Config struct {
-	Target         string
-	Output         string
-	JSON           string
-	Wordlist       string
-	DirWordlist    string
-	Ports          string
-	Threads        int
-	NoPassive      bool
-	GitHubToken    string
-	Proxy          string
-	ScopeFile      string
-	SARIF          string
-	NotifySlack    string
-	NotifyTelegram string
-	Resume         bool
-	ConfigFile     string
-	Modules        []string
-	OutputDir      string
-	Retries        int
-	Rate           int
-	Silent         bool
-	Verbose        bool
-	TemplatePaths  []string
-	Resolver       string
-	ShodanKey      string
-	MarkdownOut    string
-	DiffFile       string
+	Target            string
+	Output            string
+	JSON              string
+	Wordlist          string
+	DirWordlist       string
+	Ports             string
+	Threads           int
+	NoPassive         bool
+	GitHubToken       string
+	Proxy             string
+	ScopeFile         string
+	SARIF             string
+	NotifySlack       string
+	NotifyTelegram    string
+	Resume            bool
+	ConfigFile        string
+	Modules           []string
+	OutputDir         string
+	Retries           int
+	Rate              int
+	Silent            bool
+	Verbose           bool
+	TemplatePaths     []string
+	Resolver          string
+	ShodanKey         string
+	MarkdownOut       string
+	DiffFile          string
+	CVELive           bool
+	NVDAPIKey         string
+	CVETimeout        int
+	NmapXML           string
+	SkipPortScan      bool
+	CVEProfile        string
+	CVEMinConfidence  string
+	CVERequireVersion bool
+	CVEOnlyKEV        bool
+	CVEMinCVSS        float64
 }
 
 type Results struct {
-	Subs         []subdomain.Result
-	Ports        []portscan.Result
-	HTTP         []httpcheck.Result
-	Vulns        []vulns.Match
-	WAFs         []waf.Result
-	Dirs         []dirbust.Hit
-	JS           []jsscan.Finding
-	GH           []ghsearch.Finding
-	Buckets      []buckets.Result
-	TLS          []tlscheck.Result
-	Redirects    []openredirect.Result
-	AXFR         []axfr.Result
-	WHOIS        *whois.Result
-	Screenshots  []screenshot.Result
-	Takeover     []takeover.Result
-	CORS         []cors.Result
-	Bypass       []bypass.Result
-	VHosts       []vhost.Result
-	Favicons     []favicon.Result
-	ASN          []asn.Result
-	GraphQL      []graphql.Result
-	EmailSec     *emailsec.Result
-	AdminPanel   []adminpanel.Result
-	SQLi         []sqli.Result
-	DefaultCreds []defaultcreds.Result
-	RateLimit    []ratelimit.Result
-	Templates    []templates.Match
-	XSS          []xss.Result
-	SSRF         []ssrf.Result
-	LFI          []lfi.Result
-	HostHeader   []hostheader.Result
-	JWT          []jwt.Result
-	Wayback      []wayback.Result
-	Shodan       []shodan.Result
-	XXE          []xxe.Result
-	CmdI         []cmdi.Result
-	Findings     []finding.Finding
-	PassiveNames []string
+	Subs          []subdomain.Result
+	Ports         []portscan.Result
+	HTTP          []httpcheck.Result
+	Vulns         []vulns.Match
+	WAFs          []waf.Result
+	Dirs          []dirbust.Hit
+	JS            []jsscan.Finding
+	GH            []ghsearch.Finding
+	Buckets       []buckets.Result
+	TLS           []tlscheck.Result
+	Redirects     []openredirect.Result
+	AXFR          []axfr.Result
+	WHOIS         *whois.Result
+	Screenshots   []screenshot.Result
+	Takeover      []takeover.Result
+	CORS          []cors.Result
+	Bypass        []bypass.Result
+	VHosts        []vhost.Result
+	Favicons      []favicon.Result
+	ASN           []asn.Result
+	GraphQL       []graphql.Result
+	EmailSec      *emailsec.Result
+	AdminPanel    []adminpanel.Result
+	SQLi          []sqli.Result
+	DefaultCreds  []defaultcreds.Result
+	RateLimit     []ratelimit.Result
+	Templates     []templates.Match
+	XSS           []xss.Result
+	SSRF          []ssrf.Result
+	LFI           []lfi.Result
+	HostHeader    []hostheader.Result
+	JWT           []jwt.Result
+	Wayback       []wayback.Result
+	Shodan        []shodan.Result
+	XXE           []xxe.Result
+	CmdI          []cmdi.Result
+	Findings      []finding.Finding
+	PassiveNames  []string
+	Fingerprints  []vulns.Fingerprint
+	CVEEnrichment vulns.EnrichReport
+	CVEFilter     vulns.FilterReport
 }
 
 type Engine struct {
@@ -190,21 +206,41 @@ func step1(e *Engine, res *Results, send func(tea.Msg)) {
 }
 
 func step2(e *Engine, res *Results, send func(tea.Msg)) {
-	portList := parsePortList(e.cfg.Ports)
-	res.Ports = portscan.Scan(res.Subs, portList, e.cfg.Threads, func(r portscan.Result) {
-		bannerText := ""
-		if r.Banner != "" {
-			bannerText = "  " + styleMuted.Render(r.Banner)
-		}
-		send(ui.ItemMsg{
-			Icon: styleYellow.Render("⬡"),
-			Text: fmt.Sprintf("%s:%s%s",
-				styleMuted.Render(r.Host),
-				styleGreen.Render(fmt.Sprintf("%d", r.Port)),
-				bannerText,
-			),
+	if !e.cfg.SkipPortScan {
+		portList := parsePortList(e.cfg.Ports)
+		res.Ports = portscan.Scan(res.Subs, portList, e.cfg.Threads, func(r portscan.Result) {
+			bannerText := ""
+			if r.Banner != "" {
+				bannerText = "  " + styleMuted.Render(r.Banner)
+			}
+			send(ui.ItemMsg{
+				Icon: styleYellow.Render("⬡"),
+				Text: fmt.Sprintf("%s:%s%s",
+					styleMuted.Render(r.Host),
+					styleGreen.Render(fmt.Sprintf("%d", r.Port)),
+					bannerText,
+				),
+			})
 		})
-	})
+	}
+	if e.cfg.NmapXML != "" {
+		imported, err := nmapxml.ParseFile(e.cfg.NmapXML)
+		if err == nil {
+			res.Ports = append(res.Ports, imported.Ports...)
+			res.Fingerprints = append(res.Fingerprints, imported.Fingerprints...)
+			for _, p := range imported.Ports {
+				send(ui.ItemMsg{
+					Icon: stylePurple.Render("nmap"),
+					Text: fmt.Sprintf("%s:%s  %s",
+						styleMuted.Render(p.Host),
+						styleGreen.Render(fmt.Sprintf("%d", p.Port)),
+						styleMuted.Render(p.Service+" "+p.Banner),
+					),
+				})
+			}
+		}
+	}
+	res.Ports = dedupePorts(res.Ports)
 }
 
 func step3(e *Engine, res *Results, send func(tea.Msg)) {
@@ -226,6 +262,7 @@ func step3(e *Engine, res *Results, send func(tea.Msg)) {
 	}
 	for _, p := range res.Ports {
 		if p.Banner != "" {
+			res.Fingerprints = append(res.Fingerprints, vulns.FingerprintBanner(p.Host, p.Port, p.Banner)...)
 			addVuln(vulns.CheckBanner(p.Host, p.Port, p.Banner))
 		}
 	}
@@ -239,9 +276,40 @@ func step3(e *Engine, res *Results, send func(tea.Msg)) {
 				})
 			}
 		}
+		res.Fingerprints = append(res.Fingerprints, vulns.FingerprintHTTP(h.Host, h.Port, h.Headers, h.Body)...)
 		addVuln(vulns.CheckHTTPFull(h.Host, h.Port, h.Headers, h.Body))
 		scheme := strings.SplitN(h.URL, "://", 2)[0]
+		res.Fingerprints = append(res.Fingerprints, vulns.ProbeFingerprints(scheme, h.Host, h.Port)...)
 		addVuln(vulns.ProbeVersionEndpoints(scheme, h.Host, h.Port))
+	}
+	res.Fingerprints = dedupeFingerprints(res.Fingerprints)
+	if e.cfg.CVELive {
+		enriched, enrichReport, err := vulns.EnrichLiveDetailed(context.Background(), res.Fingerprints, res.Vulns, vulns.EnrichOptions{
+			NVDAPIKey:         e.cfg.NVDAPIKey,
+			Timeout:           time.Duration(e.cfg.CVETimeout) * time.Second,
+			MaxPerFingerprint: 200,
+		})
+		res.CVEEnrichment = enrichReport
+		if err == nil {
+			res.Vulns = enriched
+			send(ui.ItemMsg{
+				Icon: styleYellow.Render("CVE"),
+				Text: fmt.Sprintf("NVD:%d  KEV:%d  EPSS:%d  errors:%d",
+					enrichReport.NVDMatches,
+					enrichReport.KEVLoaded,
+					enrichReport.EPSSLoaded,
+					len(enrichReport.NVDErrors),
+				),
+			})
+			for _, m := range enriched {
+				if m.Source == "nvd-live" || strings.Contains(m.Source, "nvd-live") {
+					send(ui.ItemMsg{
+						Icon: styleRed.Render("CVE"),
+						Text: styleRed.Render(m.CVE) + "  " + styleMuted.Render(m.Product+" "+m.Version) + "  " + styleYellow.Render(m.Priority),
+					})
+				}
+			}
+		}
 	}
 	if e.cfg.Target != "" {
 		for _, h := range res.HTTP {
@@ -258,12 +326,61 @@ func step3(e *Engine, res *Results, send func(tea.Msg)) {
 						Description: "CONFIRMED: " + vr.Evidence,
 						Link:        "https://nvd.nist.gov/vuln/detail/" + vr.CVE,
 						Confidence:  "confirmed",
+						Source:      "active-verify",
+						Priority:    "P0",
 					})
 					send(ui.ItemMsg{Icon: "🔴", Text: "CONFIRMED CVE: " + vr.CVE + " on " + h.Host})
 				}
 			}
 		}
 	}
+	res.Vulns = vulns.DedupeMatches(res.Vulns)
+	res.Vulns, res.CVEFilter = vulns.FilterMatchesDetailed(res.Vulns, e.cvePolicy(), e.cfg.CVEProfile)
+}
+
+func (e *Engine) cvePolicy() vulns.Policy {
+	p := vulns.PrecisionProfile(e.cfg.CVEProfile)
+	if e.cfg.CVEMinConfidence != "" {
+		p.MinConfidence = e.cfg.CVEMinConfidence
+	}
+	if e.cfg.CVERequireVersion {
+		p.RequireVersion = true
+	}
+	if e.cfg.CVEOnlyKEV {
+		p.OnlyKEV = true
+	}
+	if e.cfg.CVEMinCVSS > 0 {
+		p.MinCVSS = e.cfg.CVEMinCVSS
+	}
+	return p
+}
+
+func dedupeFingerprints(in []vulns.Fingerprint) []vulns.Fingerprint {
+	seen := make(map[string]bool)
+	out := in[:0]
+	for _, fp := range in {
+		key := fp.Host + "|" + strconv.Itoa(fp.Port) + "|" + fp.Product + "|" + fp.Version + "|" + fp.Source
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, fp)
+	}
+	return out
+}
+
+func dedupePorts(in []portscan.Result) []portscan.Result {
+	seen := make(map[string]bool)
+	out := in[:0]
+	for _, p := range in {
+		key := p.Host + "|" + p.IP + "|" + strconv.Itoa(p.Port)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, p)
+	}
+	return out
 }
 
 func step4(e *Engine, res *Results, send func(tea.Msg)) {

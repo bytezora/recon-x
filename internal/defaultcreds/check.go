@@ -145,15 +145,15 @@ func tryBasicAuth(client *http.Client, loginURL, username, password string) *Res
 }
 
 func (r Result) ToFinding() finding.Finding {
-return finding.Finding{
-Type:               "default-creds",
-Severity:           finding.Critical,
-Confidence:         finding.Confirmed,
-Title:              "Default Credentials Accepted: " + r.Username + ":" + r.Password,
-AffectedURL:        r.URL,
-Evidence:           "HTTP " + strconv.Itoa(r.StatusCode) + " — login accepted with " + r.Username + ":" + r.Password,
-Reason:             "Login endpoint accepted a default or well-known credential pair — authentication is trivially bypassed",
-Remediation:        "Change default credentials immediately. Enforce strong password policy. Consider MFA.",
-ManualVerification: false,
-}
+	return finding.Finding{
+		Type:               "default-creds",
+		Severity:           finding.Critical,
+		Confidence:         finding.Confirmed,
+		Title:              "Default Credentials Accepted: " + r.Username + ":" + r.Password,
+		AffectedURL:        r.URL,
+		Evidence:           "HTTP " + strconv.Itoa(r.StatusCode) + " — login accepted with " + r.Username + ":" + r.Password,
+		Reason:             "Login endpoint accepted a default or well-known credential pair — authentication is trivially bypassed",
+		Remediation:        "Change default credentials immediately. Enforce strong password policy. Consider MFA.",
+		ManualVerification: false,
+	}
 }

@@ -1094,4 +1094,3 @@ var Signatures = []Sig{
 	{Pattern: `gRPC`, Service: "gRPC", Version: "", Category: "network"},
 	{Pattern: `RESTCONF`, Service: "RESTCONF", Version: "", Category: "network"},
 }
-

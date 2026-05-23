@@ -85,7 +85,7 @@ func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, ta
 		results = append(results, sarifResult{
 			RuleID:    v.CVE,
 			Level:     level,
-			Message:   sarifMessage{Text: fmt.Sprintf("%s on %s:%d — %s", v.CVE, v.Host, v.Port, v.Description)},
+			Message:   sarifMessage{Text: fmt.Sprintf("%s on %s:%d — %s (product=%s version=%s cpe=%s priority=%s kev=%v epss=%.4f source=%s)", v.CVE, v.Host, v.Port, v.Description, v.Product, v.Version, v.CPE, v.Priority, v.KEV, v.EPSS, v.Source)},
 			Locations: []sarifLocation{{PhysicalLocation: sarifPhysLoc{ArtifactLocation: sarifArtLoc{URI: fmt.Sprintf("https://%s", v.Host)}}}},
 		})
 	}

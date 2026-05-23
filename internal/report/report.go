@@ -1,73 +1,76 @@
 package report
 
 import (
-"fmt"
-"html/template"
-"os"
-"strings"
-"time"
+	"fmt"
+	"html/template"
+	"os"
+	"strings"
+	"time"
 
-"github.com/bytezora/recon-x/internal/axfr"
-"github.com/bytezora/recon-x/internal/buckets"
-"github.com/bytezora/recon-x/internal/dirbust"
-"github.com/bytezora/recon-x/internal/ghsearch"
-"github.com/bytezora/recon-x/internal/httpcheck"
-"github.com/bytezora/recon-x/internal/jsscan"
-"github.com/bytezora/recon-x/internal/openredirect"
-"github.com/bytezora/recon-x/internal/portscan"
-"github.com/bytezora/recon-x/internal/screenshot"
-"github.com/bytezora/recon-x/internal/subdomain"
-"github.com/bytezora/recon-x/internal/tlscheck"
-"github.com/bytezora/recon-x/internal/vulns"
-"github.com/bytezora/recon-x/internal/waf"
-"github.com/bytezora/recon-x/internal/whois"
-"github.com/bytezora/recon-x/internal/asn"
-"github.com/bytezora/recon-x/internal/bypass"
-"github.com/bytezora/recon-x/internal/cors"
-"github.com/bytezora/recon-x/internal/adminpanel"
-"github.com/bytezora/recon-x/internal/defaultcreds"
-"github.com/bytezora/recon-x/internal/emailsec"
-"github.com/bytezora/recon-x/internal/favicon"
-"github.com/bytezora/recon-x/internal/ratelimit"
-"github.com/bytezora/recon-x/internal/sqli"
-"github.com/bytezora/recon-x/internal/graphql"
-"github.com/bytezora/recon-x/internal/takeover"
-"github.com/bytezora/recon-x/internal/finding"
-"github.com/bytezora/recon-x/internal/templates"
-"github.com/bytezora/recon-x/internal/vhost"
+	"github.com/bytezora/recon-x/internal/adminpanel"
+	"github.com/bytezora/recon-x/internal/asn"
+	"github.com/bytezora/recon-x/internal/axfr"
+	"github.com/bytezora/recon-x/internal/buckets"
+	"github.com/bytezora/recon-x/internal/bypass"
+	"github.com/bytezora/recon-x/internal/cors"
+	"github.com/bytezora/recon-x/internal/defaultcreds"
+	"github.com/bytezora/recon-x/internal/dirbust"
+	"github.com/bytezora/recon-x/internal/emailsec"
+	"github.com/bytezora/recon-x/internal/favicon"
+	"github.com/bytezora/recon-x/internal/finding"
+	"github.com/bytezora/recon-x/internal/ghsearch"
+	"github.com/bytezora/recon-x/internal/graphql"
+	"github.com/bytezora/recon-x/internal/httpcheck"
+	"github.com/bytezora/recon-x/internal/jsscan"
+	"github.com/bytezora/recon-x/internal/openredirect"
+	"github.com/bytezora/recon-x/internal/portscan"
+	"github.com/bytezora/recon-x/internal/ratelimit"
+	"github.com/bytezora/recon-x/internal/screenshot"
+	"github.com/bytezora/recon-x/internal/sqli"
+	"github.com/bytezora/recon-x/internal/subdomain"
+	"github.com/bytezora/recon-x/internal/takeover"
+	"github.com/bytezora/recon-x/internal/templates"
+	"github.com/bytezora/recon-x/internal/tlscheck"
+	"github.com/bytezora/recon-x/internal/vhost"
+	"github.com/bytezora/recon-x/internal/vulns"
+	"github.com/bytezora/recon-x/internal/waf"
+	"github.com/bytezora/recon-x/internal/whois"
 )
 
 type Data struct {
-Target      string
-GeneratedAt string
-Subdomains  []subdomain.Result
-Ports       []portscan.Result
-HTTP        []httpcheck.Result
-Vulns       []vulns.Match
-WAFs        []waf.Result
-DirHits     []dirbust.Hit
-JSFindings  []jsscan.Finding
-GHFindings  []ghsearch.Finding
-Buckets     []buckets.Result
-TLS         []tlscheck.Result
-Redirects   []openredirect.Result
-AXFR        []axfr.Result
-WHOIS       *whois.Result
-Screenshots []screenshot.Result
-Takeover  []takeover.Result
-CORS      []cors.Result
-Bypass    []bypass.Result
-VHosts    []vhost.Result
-Favicons  []favicon.Result
-ASN       []asn.Result
-GraphQL   []graphql.Result
-EmailSec     *emailsec.Result
-AdminPanel   []adminpanel.Result
-SQLi         []sqli.Result
-DefaultCreds []defaultcreds.Result
-RateLimit    []ratelimit.Result
-Templates    []templates.Match
-Findings     []finding.Finding
+	Target        string
+	GeneratedAt   string
+	Subdomains    []subdomain.Result
+	Ports         []portscan.Result
+	HTTP          []httpcheck.Result
+	Fingerprints  []vulns.Fingerprint
+	CVEEnrichment vulns.EnrichReport
+	CVEFilter     vulns.FilterReport
+	Vulns         []vulns.Match
+	WAFs          []waf.Result
+	DirHits       []dirbust.Hit
+	JSFindings    []jsscan.Finding
+	GHFindings    []ghsearch.Finding
+	Buckets       []buckets.Result
+	TLS           []tlscheck.Result
+	Redirects     []openredirect.Result
+	AXFR          []axfr.Result
+	WHOIS         *whois.Result
+	Screenshots   []screenshot.Result
+	Takeover      []takeover.Result
+	CORS          []cors.Result
+	Bypass        []bypass.Result
+	VHosts        []vhost.Result
+	Favicons      []favicon.Result
+	ASN           []asn.Result
+	GraphQL       []graphql.Result
+	EmailSec      *emailsec.Result
+	AdminPanel    []adminpanel.Result
+	SQLi          []sqli.Result
+	DefaultCreds  []defaultcreds.Result
+	RateLimit     []ratelimit.Result
+	Templates     []templates.Match
+	Findings      []finding.Finding
 }
 
 const tmpl = `<!DOCTYPE html>
@@ -277,6 +280,8 @@ a:hover{text-decoration:underline}
 
 <div class="crit-bar">
   <span class="crit-item"><span class="crit-num red">{{len .Vulns}}</span> cve</span>
+  <span class="crit-item"><span class="crit-num yellow">{{.CVEFilter.Filtered}}</span> cve filtered</span>
+  <span class="crit-item"><span class="crit-num">{{.CVEEnrichment.NVDMatches}}</span> nvd live</span>
   <span class="crit-item"><span class="crit-num {{if .SQLi}}red{{else}}green{{end}}">{{len .SQLi}}</span> sqli</span>
   <span class="crit-item"><span class="crit-num {{if .Takeover}}red{{else}}green{{end}}">{{len .Takeover}}</span> takeover</span>
   <span class="crit-item"><span class="crit-num {{if .CORS}}yellow{{else}}green{{end}}">{{len .CORS}}</span> cors</span>
@@ -305,6 +310,10 @@ a:hover{text-decoration:underline}
   <div class="card" onclick="show('vulns',this)">
     <div class="num">{{len .Vulns}}</div>
     <div class="label">cve</div>
+  </div>
+  <div class="card" onclick="show('fingerprints',this)">
+    <div class="num">{{len .Fingerprints}}</div>
+    <div class="label">fingerprints</div>
   </div>
   <div class="card" onclick="show('waf',this)">
     <div class="num">{{len .WAFs}}</div>
@@ -473,15 +482,28 @@ a:hover{text-decoration:underline}
   <!-- CVE -->
   <div id="tab-vulns" class="tab-content">
     <h2>CVE Matches</h2>
+    <table style="margin-bottom:1rem">
+      <tbody>
+        <tr><td class="mono" style="width:180px;color:var(--dim)">Profile</td><td class="mono">{{.CVEFilter.Profile}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Min Confidence</td><td class="mono">{{.CVEFilter.MinConfidence}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Require Version</td><td class="mono">{{.CVEFilter.RequireVersion}}</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">CVE Before / After</td><td class="mono">{{.CVEFilter.Before}} / {{.CVEFilter.After}} (filtered {{.CVEFilter.Filtered}})</td></tr>
+        <tr><td class="mono" style="color:var(--dim)">Live Enrichment</td><td class="mono">NVD matches {{.CVEEnrichment.NVDMatches}}, KEV loaded {{.CVEEnrichment.KEVLoaded}}, EPSS loaded {{.CVEEnrichment.EPSSLoaded}}, NVD errors {{len .CVEEnrichment.NVDErrors}}</td></tr>
+      </tbody>
+    </table>
     {{if .Vulns}}
     <table>
-      <thead><tr><th>#</th><th>Host</th><th>Port</th><th>CVE</th><th>CVSS</th><th>Severity</th><th>Description</th><th>Banner / Header</th><th>Confidence</th></tr></thead>
+      <thead><tr><th>#</th><th>Priority</th><th>Host</th><th>Port</th><th>Product</th><th>Version</th><th>CPE</th><th>CVE</th><th>CVSS</th><th>Severity</th><th>KEV</th><th>EPSS</th><th>Source</th><th>Description</th><th>Evidence</th><th>Confidence</th></tr></thead>
       <tbody>
       {{range $i,$v := .Vulns}}
       <tr>
         <td class="mono">{{$i}}</td>
+        <td><span class="tag tag-alert">{{$v.Priority}}</span></td>
         <td>{{$v.Host}}</td>
         <td>{{if $v.Port}}<span class="tag tag-hi">{{$v.Port}}</span>{{else}}<span class="tag">HTTP</span>{{end}}</td>
+        <td class="mono">{{$v.Product}}</td>
+        <td class="mono">{{$v.Version}}</td>
+        <td class="mono">{{$v.CPE}}</td>
         <td><a href="{{$v.Link}}" target="_blank">{{$v.CVE}}</a></td>
         <td>
           {{if ge $v.CVSS 9.0}}<span class="cvss-crit">{{printf "%.1f" $v.CVSS}}</span>
@@ -494,6 +516,9 @@ a:hover{text-decoration:underline}
           {{else if eq $v.Severity "HIGH"}}<span class="sev-high">HIGH</span>
           {{else}}<span class="sev-med">{{$v.Severity}}</span>{{end}}
         </td>
+        <td>{{if $v.KEV}}<span class="tag tag-alert">YES</span>{{else}}<span class="tag">no</span>{{end}}</td>
+        <td class="mono">{{printf "%.4f" $v.EPSS}}</td>
+        <td class="mono">{{$v.Source}}</td>
         <td>{{$v.Description}}</td>
         <td class="mono">{{$v.Banner}}</td>
         <td>{{if eq $v.Confidence "confirmed"}}<span class="tag tag-alert" style="font-weight:700">CONFIRMED</span>{{else if eq $v.Confidence "high"}}<span class="tag tag-hi">high</span>{{else if eq $v.Confidence "medium"}}<span class="tag">medium</span>{{else}}<span class="tag" style="color:var(--dim)">low</span>{{end}}</td>
@@ -502,6 +527,30 @@ a:hover{text-decoration:underline}
       </tbody>
     </table>
     {{else}}<p class="empty">[ no cve matches found ]</p>{{end}}
+  </div>
+
+  <div id="tab-fingerprints" class="tab-content">
+    <h2>Service Fingerprints / CPE</h2>
+    {{if .Fingerprints}}
+    <table>
+      <thead><tr><th>#</th><th>Host</th><th>Port</th><th>Product</th><th>Version</th><th>CPE</th><th>Source</th><th>Confidence</th><th>Evidence</th></tr></thead>
+      <tbody>
+      {{range $i,$f := .Fingerprints}}
+      <tr>
+        <td class="mono">{{$i}}</td>
+        <td>{{$f.Host}}</td>
+        <td><span class="tag tag-hi">{{$f.Port}}</span></td>
+        <td class="mono">{{$f.Product}}</td>
+        <td class="mono">{{$f.Version}}</td>
+        <td class="mono">{{$f.CPE}}</td>
+        <td class="mono">{{$f.Source}}</td>
+        <td><span class="tag">{{$f.Confidence}}</span></td>
+        <td class="mono">{{$f.Evidence}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}<p class="empty">[ no service fingerprints found ]</p>{{end}}
   </div>
 
   <!-- WAF -->
@@ -1064,80 +1113,88 @@ window.onload = function() {
 </html>`
 
 func Generate(
-target string,
-subs   []subdomain.Result,
-ports  []portscan.Result,
-http   []httpcheck.Result,
-vs     []vulns.Match,
-wafs   []waf.Result,
-dirs   []dirbust.Hit,
-jsf    []jsscan.Finding,
-ghf    []ghsearch.Finding,
-bkts   []buckets.Result,
-tlsr   []tlscheck.Result,
-redir  []openredirect.Result,
-axfrr  []axfr.Result,
-who    *whois.Result,
-shots  []screenshot.Result,
-tkover  []takeover.Result,
-corsR   []cors.Result,
-bypassR []bypass.Result,
-vhosts  []vhost.Result,
-favicons []favicon.Result,
-asnR    []asn.Result,
-gqlR    []graphql.Result,
-emailR  *emailsec.Result,
-adminPanel   []adminpanel.Result,
-sqliRes      []sqli.Result,
-defaultCreds []defaultcreds.Result,
-rateLimit    []ratelimit.Result,
-tplMatches   []templates.Match,
-findings     []finding.Finding,
-outputFile string,
+	target string,
+	subs []subdomain.Result,
+	ports []portscan.Result,
+	http []httpcheck.Result,
+	fingerprints []vulns.Fingerprint,
+	cveEnrichment vulns.EnrichReport,
+	cveFilter vulns.FilterReport,
+	vs []vulns.Match,
+	wafs []waf.Result,
+	dirs []dirbust.Hit,
+	jsf []jsscan.Finding,
+	ghf []ghsearch.Finding,
+	bkts []buckets.Result,
+	tlsr []tlscheck.Result,
+	redir []openredirect.Result,
+	axfrr []axfr.Result,
+	who *whois.Result,
+	shots []screenshot.Result,
+	tkover []takeover.Result,
+	corsR []cors.Result,
+	bypassR []bypass.Result,
+	vhosts []vhost.Result,
+	favicons []favicon.Result,
+	asnR []asn.Result,
+	gqlR []graphql.Result,
+	emailR *emailsec.Result,
+	adminPanel []adminpanel.Result,
+	sqliRes []sqli.Result,
+	defaultCreds []defaultcreds.Result,
+	rateLimit []ratelimit.Result,
+	tplMatches []templates.Match,
+	findings []finding.Finding,
+	outputFile string,
 ) error {
-f, err := os.Create(outputFile)
-if err != nil {
-return err
-}
-defer f.Close()
+	f, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
-t := template.Must(template.New("r").Funcs(template.FuncMap{
-	"upper": func(v interface{}) string { return strings.ToUpper(fmt.Sprintf("%s", v)) },
-	"index": func(s []string, i int) string {
-		if len(s) > i { return s[i] }
-		return ""
-	},
-}).Parse(tmpl))
-return t.Execute(f, Data{
-Target:      target,
-GeneratedAt: time.Now().Format("2006-01-02 15:04:05"),
-Subdomains:  subs,
-Ports:       ports,
-HTTP:        http,
-Vulns:       vs,
-WAFs:        wafs,
-DirHits:     dirs,
-JSFindings:  jsf,
-GHFindings:  ghf,
-Buckets:     bkts,
-TLS:         tlsr,
-Redirects:   redir,
-AXFR:        axfrr,
-WHOIS:       who,
-Screenshots: shots,
-Takeover:  tkover,
-CORS:      corsR,
-Bypass:    bypassR,
-VHosts:    vhosts,
-Favicons:  favicons,
-ASN:       asnR,
-GraphQL:   gqlR,
-EmailSec:    emailR,
-AdminPanel:   adminPanel,
-SQLi:         sqliRes,
-DefaultCreds: defaultCreds,
-RateLimit:    rateLimit,
-Templates:    tplMatches,
-Findings:     findings,
-})
+	t := template.Must(template.New("r").Funcs(template.FuncMap{
+		"upper": func(v interface{}) string { return strings.ToUpper(fmt.Sprintf("%s", v)) },
+		"index": func(s []string, i int) string {
+			if len(s) > i {
+				return s[i]
+			}
+			return ""
+		},
+	}).Parse(tmpl))
+	return t.Execute(f, Data{
+		Target:        target,
+		GeneratedAt:   time.Now().Format("2006-01-02 15:04:05"),
+		Subdomains:    subs,
+		Ports:         ports,
+		HTTP:          http,
+		Fingerprints:  fingerprints,
+		CVEEnrichment: cveEnrichment,
+		CVEFilter:     cveFilter,
+		Vulns:         vs,
+		WAFs:          wafs,
+		DirHits:       dirs,
+		JSFindings:    jsf,
+		GHFindings:    ghf,
+		Buckets:       bkts,
+		TLS:           tlsr,
+		Redirects:     redir,
+		AXFR:          axfrr,
+		WHOIS:         who,
+		Screenshots:   shots,
+		Takeover:      tkover,
+		CORS:          corsR,
+		Bypass:        bypassR,
+		VHosts:        vhosts,
+		Favicons:      favicons,
+		ASN:           asnR,
+		GraphQL:       gqlR,
+		EmailSec:      emailR,
+		AdminPanel:    adminPanel,
+		SQLi:          sqliRes,
+		DefaultCreds:  defaultCreds,
+		RateLimit:     rateLimit,
+		Templates:     tplMatches,
+		Findings:      findings,
+	})
 }

@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible problem in recon-x
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please include enough detail for us to reproduce it safely.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: recon-x version or commit SHA
+      placeholder: v2.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Command line used, with secrets redacted
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or report snippets
+      description: Redact tokens, private hostnames and sensitive output.
+      render: text

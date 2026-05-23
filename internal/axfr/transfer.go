@@ -279,8 +279,8 @@ func parseResponse(data []byte) ([]Record, int, error) {
 		}
 
 		rrtype := binary.BigEndian.Uint16(data[offset : offset+2])
-		ttl    := binary.BigEndian.Uint32(data[offset+4 : offset+8])
-		rdlen  := int(binary.BigEndian.Uint16(data[offset+8 : offset+10]))
+		ttl := binary.BigEndian.Uint32(data[offset+4 : offset+8])
+		rdlen := int(binary.BigEndian.Uint16(data[offset+8 : offset+10]))
 		offset += 10
 
 		value := parseRData(data, offset, rdlen, rrtype)

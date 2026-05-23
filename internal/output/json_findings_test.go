@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/bytezora/recon-x/internal/finding"
+	"github.com/bytezora/recon-x/internal/vulns"
 )
 
 func TestWriteJSON_IncludesFindings(t *testing.T) {
@@ -25,13 +26,14 @@ func TestWriteJSON_IncludesFindings(t *testing.T) {
 	err := WriteJSON(
 		path,
 		"example.com",
-		nil, nil, nil,
+		nil, nil, nil, nil,
+		vulns.EnrichReport{}, vulns.FilterReport{},
 		nil, nil, nil, nil, nil, nil,
-		nil, nil, nil, nil,
-		nil, nil, nil, nil, nil,
-		nil, nil, nil, nil,
-		nil, nil, nil, nil,
-		nil,
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil,
 		findings,
 	)
 	if err != nil {

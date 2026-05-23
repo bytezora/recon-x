@@ -44,43 +44,46 @@ import (
 )
 
 type MarkdownData struct {
-	Target       string
-	Subdomains   []subdomain.Result
-	Ports        []portscan.Result
-	HTTP         []httpcheck.Result
-	Vulns        []vulns.Match
-	WAFs         []waf.Result
-	DirHits      []dirbust.Hit
-	JSFindings   []jsscan.Finding
-	GHFindings   []ghsearch.Finding
-	Buckets      []buckets.Result
-	TLS          []tlscheck.Result
-	Redirects    []openredirect.Result
-	AXFR         []axfr.Result
-	WHOIS        *whois.Result
-	Screenshots  []screenshot.Result
-	Takeover     []takeover.Result
-	CORS         []cors.Result
-	Bypass       []bypass.Result
-	VHosts       []vhost.Result
-	Favicons     []favicon.Result
-	ASN          []asn.Result
-	GraphQL      []graphql.Result
-	EmailSec     *emailsec.Result
-	AdminPanel   []adminpanel.Result
-	SQLi         []sqli.Result
-	DefaultCreds []defaultcreds.Result
-	RateLimit    []ratelimit.Result
-	Templates    []templates.Match
-	XSS          []xss.Result
-	SSRF         []ssrf.Result
-	LFI          []lfi.Result
-	HostHeader   []hostheader.Result
-	JWT          []jwt.Result
-	Wayback      []wayback.Result
-	Shodan       []shodan.Result
-	XXE          []xxe.Result
-	CmdI         []cmdi.Result
+	Target        string
+	Subdomains    []subdomain.Result
+	Ports         []portscan.Result
+	HTTP          []httpcheck.Result
+	Fingerprints  []vulns.Fingerprint
+	CVEEnrichment vulns.EnrichReport
+	CVEFilter     vulns.FilterReport
+	Vulns         []vulns.Match
+	WAFs          []waf.Result
+	DirHits       []dirbust.Hit
+	JSFindings    []jsscan.Finding
+	GHFindings    []ghsearch.Finding
+	Buckets       []buckets.Result
+	TLS           []tlscheck.Result
+	Redirects     []openredirect.Result
+	AXFR          []axfr.Result
+	WHOIS         *whois.Result
+	Screenshots   []screenshot.Result
+	Takeover      []takeover.Result
+	CORS          []cors.Result
+	Bypass        []bypass.Result
+	VHosts        []vhost.Result
+	Favicons      []favicon.Result
+	ASN           []asn.Result
+	GraphQL       []graphql.Result
+	EmailSec      *emailsec.Result
+	AdminPanel    []adminpanel.Result
+	SQLi          []sqli.Result
+	DefaultCreds  []defaultcreds.Result
+	RateLimit     []ratelimit.Result
+	Templates     []templates.Match
+	XSS           []xss.Result
+	SSRF          []ssrf.Result
+	LFI           []lfi.Result
+	HostHeader    []hostheader.Result
+	JWT           []jwt.Result
+	Wayback       []wayback.Result
+	Shodan        []shodan.Result
+	XXE           []xxe.Result
+	CmdI          []cmdi.Result
 }
 
 func WriteMarkdown(path string, data MarkdownData) error {
@@ -105,7 +108,10 @@ func WriteMarkdown(path string, data MarkdownData) error {
 	w("| Subdomains | %d |", len(data.Subdomains))
 	w("| Open Ports | %d |", len(data.Ports))
 	w("| HTTP Endpoints | %d |", len(data.HTTP))
+	w("| Service Fingerprints | %d |", len(data.Fingerprints))
 	w("| Vulnerabilities (CVE) | %d |", len(data.Vulns))
+	w("| CVEs Filtered | %d |", data.CVEFilter.Filtered)
+	w("| NVD Live Matches | %d |", data.CVEEnrichment.NVDMatches)
 	w("| WAFs Detected | %d |", len(data.WAFs))
 	w("| Dir Hits | %d |", len(data.DirHits))
 	w("| JS Findings | %d |", len(data.JSFindings))
@@ -164,10 +170,22 @@ func WriteMarkdown(path string, data MarkdownData) error {
 	if len(data.Vulns) > 0 {
 		w("## Vulnerabilities")
 		w("")
-		w("| CVE | Host | Port | Severity | CVSS | Description |")
-		w("|-----|------|------|----------|------|-------------|")
+		w("**CVE policy:** profile=%s, min_confidence=%s, require_version=%v, only_kev=%v, min_cvss=%.1f. Before=%d, after=%d, filtered=%d.",
+			data.CVEFilter.Profile, data.CVEFilter.MinConfidence, data.CVEFilter.RequireVersion, data.CVEFilter.OnlyKEV, data.CVEFilter.MinCVSS,
+			data.CVEFilter.Before, data.CVEFilter.After, data.CVEFilter.Filtered)
+		w("")
+		w("**Live enrichment:** NVD matches=%d, NVD errors=%d, KEV loaded=%d, EPSS loaded=%d.",
+			data.CVEEnrichment.NVDMatches, len(data.CVEEnrichment.NVDErrors), data.CVEEnrichment.KEVLoaded, data.CVEEnrichment.EPSSLoaded)
+		w("")
+		w("| Priority | CVE | Host | Port | Product | Version | CPE | Severity | CVSS | KEV | EPSS | Source | Description |")
+		w("|----------|-----|------|------|---------|---------|-----|----------|------|-----|------|--------|-------------|")
 		for _, v := range data.Vulns {
-			w("| %s | %s | %d | %s | %.1f | %s |", v.CVE, v.Host, v.Port, v.Severity, v.CVSS, v.Description)
+			kev := "no"
+			if v.KEV {
+				kev = "yes"
+			}
+			w("| %s | %s | %s | %d | %s | %s | %s | %s | %.1f | %s | %.4f | %s | %s |",
+				v.Priority, v.CVE, v.Host, v.Port, v.Product, v.Version, v.CPE, v.Severity, v.CVSS, kev, v.EPSS, v.Source, v.Description)
 		}
 		w("")
 	}

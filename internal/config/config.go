@@ -7,18 +7,28 @@ import (
 )
 
 type Config struct {
-	Targets      []string `yaml:"targets"`
-	Modules      []string `yaml:"modules"`
-	Threads      int      `yaml:"threads"`
-	OutputDir    string   `yaml:"output_dir"`
-	OutputFormat string   `yaml:"output_format"`
-	Retries      int      `yaml:"retries"`
-	Rate         int      `yaml:"rate"`
-	Silent       bool     `yaml:"silent"`
-	Verbose      bool     `yaml:"verbose"`
-	GithubToken  string   `yaml:"github_token"`
-	Templates    []string `yaml:"templates"`
-	Resolver     string   `yaml:"resolver"`
+	Targets           []string `yaml:"targets"`
+	Modules           []string `yaml:"modules"`
+	Threads           int      `yaml:"threads"`
+	OutputDir         string   `yaml:"output_dir"`
+	OutputFormat      string   `yaml:"output_format"`
+	Retries           int      `yaml:"retries"`
+	Rate              int      `yaml:"rate"`
+	Silent            bool     `yaml:"silent"`
+	Verbose           bool     `yaml:"verbose"`
+	GithubToken       string   `yaml:"github_token"`
+	Templates         []string `yaml:"templates"`
+	Resolver          string   `yaml:"resolver"`
+	CVELive           bool     `yaml:"cve_live"`
+	NVDAPIKey         string   `yaml:"nvd_api_key"`
+	CVETimeout        int      `yaml:"cve_timeout"`
+	NmapXML           string   `yaml:"nmap_xml"`
+	SkipPortScan      bool     `yaml:"skip_portscan"`
+	CVEProfile        string   `yaml:"cve_profile"`
+	CVEMinConfidence  string   `yaml:"cve_min_confidence"`
+	CVERequireVersion bool     `yaml:"cve_require_version"`
+	CVEOnlyKEV        bool     `yaml:"cve_only_kev"`
+	CVEMinCVSS        float64  `yaml:"cve_min_cvss"`
 }
 
 func Load(path string) (*Config, error) {
