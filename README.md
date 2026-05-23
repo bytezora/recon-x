@@ -19,23 +19,19 @@
 
 > Findings are indicators, not confirmed vulnerabilities. Scan only authorized targets.
 
-![Terminal](assets/terminal.png)
+<p align="center">
+  <img src="assets/terminal.png" alt="recon-x terminal CVE assurance workflow" width="960"/>
+  <br/>
+  <sub>High-precision CVE workflow with Nmap XML import, live NVD enrichment and public-service assurance.</sub>
+</p>
 
 ---
 
-## Highlights
-
-| Area | Capability |
-|------|------------|
-| Discovery | Passive OSINT, subdomain brute-force, vhost discovery, ASN, WHOIS, Wayback and Shodan enrichment |
-| Network | TCP ports, banner grabbing, Nmap XML import, HTTP probing, TLS checks and screenshots |
-| Web checks | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection |
-| CVE intelligence | Offline signatures, live NVD enrichment, CISA KEV, FIRST EPSS, CPE fingerprints and strict precision profiles |
-| Evidence | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs |
-| Reporting | Self-contained HTML, JSON, Markdown, SARIF and scan-to-scan diffing |
-
 ## Contents
 
+- [Highlights](#highlights)
+- [Current Snapshot](#current-snapshot)
+- [Screenshots](#screenshots)
 - [Install](#install)
 - [Usage](#usage)
 - [Flags](#flags)
@@ -45,6 +41,37 @@
 - [Config file](#config-file)
 - [Documentation](#documentation)
 - [Safety](#safety)
+
+## Highlights
+
+| Area | Capability |
+|------|------------|
+| Discovery | Passive OSINT, subdomain brute-force, vhost discovery, ASN, WHOIS, Wayback and Shodan enrichment |
+| Network | TCP ports, banner grabbing, Nmap XML import, HTTP probing, TLS checks and screenshots |
+| Web checks | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection |
+| CVE intelligence | 177 offline CVE signatures across 48 products, live NVD enrichment, CISA KEV, FIRST EPSS and strict precision profiles |
+| Evidence | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs |
+| Reporting | Self-contained HTML, JSON, Markdown, SARIF and scan-to-scan diffing |
+
+## Current Snapshot
+
+| Metric | Value |
+|--------|------:|
+| Recon modules | 35 |
+| Built-in YAML templates | 54 |
+| Offline CVE signatures | 177 |
+| CVE product families | 48 |
+| Default TCP ports | 17 |
+| Output formats | HTML, JSON, Markdown, SARIF |
+| CVE proof workflows | Ground-truth evidence + real-domain assurance |
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/report.png" alt="recon-x HTML report CVE evidence dashboard" width="980"/>
+  <br/>
+  <sub>Self-contained HTML report with CVE priorities, CPE evidence, strict policy diagnostics and reproducibility data.</sub>
+</p>
 
 ## Install
 
@@ -201,7 +228,7 @@ cat targets.txt | recon-x
 
 ## CVE matching
 
-190+ offline signatures — Apache, nginx, OpenSSH, Tomcat, Spring, Log4j, Redis, WordPress, Jenkins, GitLab, Kubernetes, Fortinet, Citrix, F5 and more. Matches on banners, headers, response bodies and version-probe endpoints. Each detected service is normalized into a product/version/CPE fingerprint where possible.
+177 offline signatures across 48 product families — Apache, nginx, OpenSSH, Tomcat, Spring, Log4j, Redis, WordPress, Jenkins, GitLab, Kubernetes, Fortinet, Citrix, F5 and more. Matches on banners, headers, response bodies and version-probe endpoints. Each detected service is normalized into a product/version/CPE fingerprint where possible.
 
 Optional live enrichment (`-cve-live`) queries NVD CVE data by CPE and enriches matches with CISA Known Exploited Vulnerabilities and FIRST EPSS probability/percentile. Results include source, CPE, product, version, confidence and priority (`P0`–`P3`). The embedded database remains SHA-256 integrity-protected for offline use.
 
@@ -261,8 +288,6 @@ out.json      machine-readable, full results
 out.sarif     SARIF 2.1.0 — GitHub Code Scanning / Defect Dojo
 diff.txt      delta between two scans — new/resolved findings
 ```
-
-![Report](assets/report.png)
 
 ---
 
