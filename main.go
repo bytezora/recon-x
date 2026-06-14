@@ -195,8 +195,9 @@ func parseFlags() engine.Config {
 	out := flag.String("output", "report.html", "HTML report output path")
 	jsonOut := flag.String("json", "", "JSON output path (optional)")
 	wordlist := flag.String("wordlist", "", "Custom subdomain wordlist (default: embedded)")
+	subdomainFile := flag.String("subdomain-file", "", "Exact subdomain seed file (one FQDN or label per line)")
 	dirWordlist := flag.String("dir-wordlist", "", "Custom paths wordlist for dir brute (default: embedded)")
-	ports := flag.String("ports", defaultPorts, "Comma-separated ports to scan")
+	ports := flag.String("ports", defaultPorts, "Comma-separated ports/ranges to scan (e.g. 80,443,8000-8100)")
 	threads := flag.Int("threads", 50, "Number of concurrent goroutines")
 	noPassive := flag.Bool("no-passive", false, "Skip crt.sh passive recon")
 	githubToken := flag.String("github-token", "", "GitHub personal access token for dorking (optional)")
@@ -262,6 +263,7 @@ func parseFlags() engine.Config {
 		Output:            *out,
 		JSON:              *jsonOut,
 		Wordlist:          *wordlist,
+		SubdomainFile:     *subdomainFile,
 		DirWordlist:       *dirWordlist,
 		Ports:             *ports,
 		Threads:           *threads,
@@ -319,6 +321,9 @@ func parseFlags() engine.Config {
 			}
 			if len(fileCfg.Modules) > 0 && *modulesFlag == "" {
 				cfg.Modules = fileCfg.Modules
+			}
+			if fileCfg.SubdomainFile != "" && *subdomainFile == "" {
+				cfg.SubdomainFile = fileCfg.SubdomainFile
 			}
 			if len(fileCfg.Templates) > 0 {
 				cfg.TemplatePaths = fileCfg.Templates
@@ -498,10 +503,33 @@ func fail(format string, a ...any) {
 func parsePortList(s string) []int {
 	parts := strings.Split(s, ",")
 	ports := make([]int, 0, len(parts))
-	for _, p := range parts {
-		n, err := strconv.Atoi(strings.TrimSpace(p))
-		if err == nil && n > 0 && n < 65536 {
+	seen := make(map[int]bool)
+	add := func(n int) {
+		if n > 0 && n < 65536 && !seen[n] {
+			seen[n] = true
 			ports = append(ports, n)
+		}
+	}
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if strings.Contains(p, "-") {
+			bounds := strings.SplitN(p, "-", 2)
+			start, startErr := strconv.Atoi(strings.TrimSpace(bounds[0]))
+			end, endErr := strconv.Atoi(strings.TrimSpace(bounds[1]))
+			if startErr != nil || endErr != nil || start > end {
+				continue
+			}
+			for n := start; n <= end; n++ {
+				add(n)
+			}
+			continue
+		}
+		n, err := strconv.Atoi(p)
+		if err == nil {
+			add(n)
 		}
 	}
 	return ports

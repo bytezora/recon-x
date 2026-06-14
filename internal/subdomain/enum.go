@@ -66,15 +66,25 @@ func Enumerate(target string, threads int, wordlistFile string, resolverAddr str
 }
 
 func AddPassive(existing []Result, names []string, resolverAddr string, onFound func(Result)) []Result {
+	return AddNames(existing, names, resolverAddr, "crtsh", onFound)
+}
+
+func AddSeedFile(existing []Result, path string, target string, resolverAddr string, onFound func(Result)) []Result {
+	names := loadSeedNames(path, target)
+	return AddNames(existing, names, resolverAddr, "seed", onFound)
+}
+
+func AddNames(existing []Result, names []string, resolverAddr string, source string, onFound func(Result)) []Result {
 	seen := make(map[string]bool, len(existing))
 	for _, r := range existing {
-		seen[r.Subdomain] = true
+		seen[strings.ToLower(r.Subdomain)] = true
 	}
 
 	resolver := newResolver(resolverAddr)
 
 	for _, name := range names {
-		if seen[name] {
+		name = normalizeSeedName(name, "")
+		if name == "" || seen[name] {
 			continue
 		}
 		seen[name] = true
@@ -88,7 +98,7 @@ func AddPassive(existing []Result, names []string, resolverAddr string, onFound 
 			ips = []string{}
 		}
 
-		r := Result{Subdomain: name, IPs: ips, Source: "crtsh"}
+		r := Result{Subdomain: name, IPs: ips, Source: source}
 		existing = append(existing, r)
 
 		if onFound != nil {
@@ -97,6 +107,50 @@ func AddPassive(existing []Result, names []string, resolverAddr string, onFound 
 	}
 
 	return existing
+}
+
+func loadSeedNames(path string, target string) []string {
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[warn] subdomain file %q unreadable: %v\n", path, err)
+		return nil
+	}
+	lines := strings.Split(string(data), "\n")
+	names := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = strings.TrimSpace(line[:i])
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		name := normalizeSeedName(fields[0], target)
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func normalizeSeedName(name string, target string) string {
+	name = strings.TrimSpace(strings.TrimSuffix(name, "."))
+	name = strings.ToLower(name)
+	if name == "" {
+		return ""
+	}
+	target = strings.TrimSpace(strings.TrimSuffix(strings.ToLower(target), "."))
+	if target != "" && !strings.Contains(name, ".") {
+		name = name + "." + target
+	}
+	return name
 }
 
 func loadWords(path string) []string {

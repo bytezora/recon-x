@@ -3,6 +3,7 @@ package portscan
 import (
 	"fmt"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,6 +20,11 @@ type Result struct {
 	Banner  string
 	Service string
 	State   string
+}
+
+type scanJob struct {
+	ip   string
+	port int
 }
 
 var Top100Ports = []int{
@@ -131,43 +137,74 @@ var serviceNames = map[int]string{
 func Scan(subs []subdomain.Result, ports []int, threads int, onFound func(Result)) []Result {
 	results := make([]Result, 0, 64)
 	mu := sync.Mutex{}
+	if threads < 1 {
+		threads = 1
+	}
 	sem := make(chan struct{}, threads)
 	wg := sync.WaitGroup{}
 
+	hostsByIP := make(map[string][]string)
+	seenHostByIP := make(map[string]map[string]bool)
 	for _, sub := range subs {
-		for _, port := range ports {
-			for _, ip := range sub.IPs {
-				sem <- struct{}{}
-				wg.Add(1)
-				go func(host, addr string, p int) {
-					defer func() { <-sem; wg.Done() }()
-					conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", addr, p), dialTimeout)
-					if err != nil {
-						return
-					}
-					defer conn.Close()
-					bannerStr := banner.GrabConn(conn, p)
-					svc := serviceNames[p]
-					if svc == "" {
-						svc = banner.GuessService(bannerStr, p)
-					}
-					r := Result{
-						Host:    host,
-						Port:    p,
-						IP:      addr,
-						Banner:  bannerStr,
-						Service: svc,
-						State:   "open",
-					}
-					mu.Lock()
-					results = append(results, r)
-					mu.Unlock()
-					if onFound != nil {
-						onFound(r)
-					}
-				}(sub.Subdomain, ip, port)
+		for _, ip := range sub.IPs {
+			if ip == "" {
+				continue
+			}
+			if seenHostByIP[ip] == nil {
+				seenHostByIP[ip] = make(map[string]bool)
+			}
+			if !seenHostByIP[ip][sub.Subdomain] {
+				seenHostByIP[ip][sub.Subdomain] = true
+				hostsByIP[ip] = append(hostsByIP[ip], sub.Subdomain)
 			}
 		}
+	}
+
+	ips := make([]string, 0, len(hostsByIP))
+	for ip := range hostsByIP {
+		ips = append(ips, ip)
+	}
+	sort.Strings(ips)
+
+	jobs := make([]scanJob, 0, len(hostsByIP)*len(ports))
+	for _, port := range ports {
+		for _, ip := range ips {
+			jobs = append(jobs, scanJob{ip: ip, port: port})
+		}
+	}
+
+	for _, job := range jobs {
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(j scanJob) {
+			defer func() { <-sem; wg.Done() }()
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", j.ip, j.port), dialTimeout)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+			bannerStr := banner.GrabConn(conn, j.port)
+			svc := serviceNames[j.port]
+			if svc == "" {
+				svc = banner.GuessService(bannerStr, j.port)
+			}
+			for _, host := range hostsByIP[j.ip] {
+				r := Result{
+					Host:    host,
+					Port:    j.port,
+					IP:      j.ip,
+					Banner:  bannerStr,
+					Service: svc,
+					State:   "open",
+				}
+				mu.Lock()
+				results = append(results, r)
+				mu.Unlock()
+				if onFound != nil {
+					onFound(r)
+				}
+			}
+		}(job)
 	}
 	wg.Wait()
 	return results

@@ -17,6 +17,8 @@ var probeClient = &http.Client{
 	},
 }
 
+var probeVersionPattern = regexp.MustCompile(`^v?\d[0-9A-Za-z._+-]{0,63}$`)
+
 type probeSpec struct {
 	path    string
 	product string
@@ -260,7 +262,7 @@ var probeSpecs = []probeSpec{
 		return ""
 	}},
 	{"/magento_version", "magento", func(body string) string {
-		return strings.TrimSpace(body)
+		return cleanProbeVersion(body)
 	}},
 	{"/admin/", "activemq", func(body string) string {
 		re := regexp.MustCompile(`ActiveMQ ([\d.]+)`)
@@ -313,7 +315,7 @@ func ProbeVersionEndpoints(scheme, host string, port int) []Match {
 	}
 	for _, spec := range probeSpecs {
 		resp, err := probeClient.Get(base + spec.path)
-		if err != nil || resp.StatusCode >= 500 {
+		if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			if err == nil {
 				resp.Body.Close()
 			}
@@ -324,7 +326,7 @@ func ProbeVersionEndpoints(scheme, host string, port int) []Match {
 		if err != nil {
 			continue
 		}
-		ver := spec.extract(string(body))
+		ver := cleanProbeVersion(spec.extract(string(body)))
 		if ver == "" {
 			continue
 		}
@@ -342,7 +344,7 @@ func ProbeFingerprints(scheme, host string, port int) []Fingerprint {
 	}
 	for _, spec := range probeSpecs {
 		resp, err := probeClient.Get(base + spec.path)
-		if err != nil || resp.StatusCode >= 500 {
+		if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			if err == nil {
 				resp.Body.Close()
 			}
@@ -353,7 +355,7 @@ func ProbeFingerprints(scheme, host string, port int) []Fingerprint {
 		if err != nil {
 			continue
 		}
-		ver := spec.extract(string(body))
+		ver := cleanProbeVersion(spec.extract(string(body)))
 		if ver == "" {
 			continue
 		}
@@ -361,4 +363,15 @@ func ProbeFingerprints(scheme, host string, port int) []Fingerprint {
 		all = append(all, fingerprintsFromDetections(host, port, ver, "version-probe:"+spec.path, []detected{d})...)
 	}
 	return all
+}
+
+func cleanProbeVersion(raw string) string {
+	v := strings.TrimSpace(raw)
+	if v == "" || len(v) > 64 {
+		return ""
+	}
+	if !probeVersionPattern.MatchString(v) {
+		return ""
+	}
+	return v
 }

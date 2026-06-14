@@ -12,6 +12,7 @@ type Config struct {
 	Threads           int      `yaml:"threads"`
 	OutputDir         string   `yaml:"output_dir"`
 	OutputFormat      string   `yaml:"output_format"`
+	SubdomainFile     string   `yaml:"subdomain_file"`
 	Retries           int      `yaml:"retries"`
 	Rate              int      `yaml:"rate"`
 	Silent            bool     `yaml:"silent"`

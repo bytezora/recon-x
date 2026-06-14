@@ -3,6 +3,8 @@ package templates
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -92,5 +94,62 @@ func TestProbeTemplate_NoMatch(t *testing.T) {
 	m := probeTemplate(tpl, srv.URL)
 	if m != nil {
 		t.Error("expected no match")
+	}
+}
+
+func TestLoadCustom_File(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "custom.yaml")
+	if err := os.WriteFile(path, []byte(`id: custom-001
+name: Custom Status
+severity: high
+request:
+  method: GET
+  path: /admin
+matchers:
+  - type: status
+    status: [200]
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpls, err := LoadCustom([]string{path})
+	if err != nil {
+		t.Fatalf("LoadCustom returned error: %v", err)
+	}
+	if len(tmpls) != 1 {
+		t.Fatalf("expected 1 template, got %d", len(tmpls))
+	}
+	if tmpls[0].ID != "custom-001" {
+		t.Fatalf("expected custom-001, got %q", tmpls[0].ID)
+	}
+}
+
+func TestLoadCustom_Directory(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "one.yml"), []byte(`id: custom-dir-001
+name: Custom Directory Template
+severity: medium
+request:
+  path: /
+matchers:
+  - type: word
+    words: ["ok"]
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("not yaml"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpls, err := LoadCustom([]string{dir})
+	if err != nil {
+		t.Fatalf("LoadCustom returned error: %v", err)
+	}
+	if len(tmpls) != 1 {
+		t.Fatalf("expected 1 template, got %d", len(tmpls))
+	}
+	if tmpls[0].ID != "custom-dir-001" {
+		t.Fatalf("expected custom-dir-001, got %q", tmpls[0].ID)
 	}
 }

@@ -2,8 +2,11 @@ package templates
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -37,15 +40,59 @@ func LoadBuiltins() ([]Template, error) {
 func LoadCustom(paths []string) ([]Template, error) {
 	var out []Template
 	for _, p := range paths {
-		data, err := fs.ReadFile(builtinFS, p)
-		if err != nil {
-			return nil, err
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
 		}
-		var t Template
-		if err := yaml.Unmarshal(data, &t); err != nil {
+		info, err := os.Stat(p)
+		if err != nil {
+			return nil, fmt.Errorf("custom template path %q: %w", p, err)
+		}
+		if info.IsDir() {
+			err := filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() || !isYAML(path) {
+					return nil
+				}
+				t, err := loadTemplateFile(path)
+				if err != nil {
+					return err
+				}
+				out = append(out, t)
+				return nil
+			})
+			if err != nil {
+				return nil, fmt.Errorf("custom template dir %q: %w", p, err)
+			}
+			continue
+		}
+		if !isYAML(p) {
+			continue
+		}
+		t, err := loadTemplateFile(p)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, t)
 	}
 	return out, nil
+}
+
+func loadTemplateFile(path string) (Template, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Template{}, err
+	}
+	var t Template
+	if err := yaml.Unmarshal(data, &t); err != nil {
+		return Template{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return t, nil
+}
+
+func isYAML(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".yaml" || ext == ".yml"
 }

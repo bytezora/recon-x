@@ -1,0 +1,32 @@
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+
+# Local scan outputs
+reports/
+report.html
+out.json
+out.sarif
+scan.json
+diff.txt
+cve-evidence.json
+cve-assurance.json
+*.recon-x-state.json
+
+# Build outputs
+bin/
+dist/
+recon-x
+recon-x.exe
+
+# Local tooling artifacts
+tools/tg_bot.py
+tools/.tg_sessions/
+tools/*.session
+tools/*.session-journal
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp

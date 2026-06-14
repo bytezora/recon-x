@@ -110,7 +110,7 @@ type extractor struct {
 }
 
 var bannerExtractors = []extractor{
-	{"openssh", regexp.MustCompile(`OpenSSH[_/](\d+\.\d+[\d.]*)`)},
+	{"openssh", regexp.MustCompile(`OpenSSH[_/ ](\d+\.\d+(?:p\d+)?[\d.]*)`)},
 	{"apache", regexp.MustCompile(`Apache/([\d.]+)`)},
 	{"nginx", regexp.MustCompile(`nginx/([\d.]+)`)},
 	{"iis", regexp.MustCompile(`Microsoft-IIS/([\d.]+)`)},
@@ -295,6 +295,8 @@ var cpeProducts = map[string]cpeProduct{
 	"zookeeper":     {"apache", "zookeeper"},
 }
 
+var cpeVersionPattern = regexp.MustCompile(`^v?\d[0-9a-z._+-]{0,63}$`)
+
 func cpeFor(product, rawVersion string) (string, string) {
 	cp, ok := cpeProducts[product]
 	if !ok {
@@ -303,10 +305,23 @@ func cpeFor(product, rawVersion string) (string, string) {
 	virtual := fmt.Sprintf("cpe:2.3:a:%s:%s", cp.vendor, cp.product)
 	versionPart := "*"
 	if rawVersion != "" {
-		versionPart = strings.ToLower(strings.TrimSpace(rawVersion))
+		if cleaned := cleanCPEVersion(rawVersion); cleaned != "" {
+			versionPart = cleaned
+		}
 	}
 	full := fmt.Sprintf("%s:%s:*:*:*:*:*:*:*", virtual, versionPart)
 	return full, virtual
+}
+
+func cleanCPEVersion(raw string) string {
+	v := strings.ToLower(strings.TrimSpace(raw))
+	if v == "" || len(v) > 64 {
+		return ""
+	}
+	if !cpeVersionPattern.MatchString(v) {
+		return ""
+	}
+	return v
 }
 
 func fingerprintsFromDetections(host string, port int, evidence, source string, detections []detected) []Fingerprint {

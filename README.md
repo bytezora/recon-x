@@ -100,7 +100,7 @@ recon-x -target example.com
 recon-x -target example.com -modules subdomain,port,http,sqli,xss,ssrf,lfi
 
 # with Burp proxy + GitHub token
-recon-x -target example.com -proxy http://127.0.0.1:8080 -github-token ghp_xxx
+recon-x -target example.com -proxy http://127.0.0.1:8080 -github-token YOUR_GITHUB_TOKEN
 
 # output to JSON, SARIF and Markdown
 recon-x -target example.com -json out.json -sarif out.sarif -markdown report.md
@@ -300,7 +300,7 @@ rate: 30
 retries: 3
 resolver: 1.1.1.1:53
 modules: [subdomain, port, http, tls, sqli, xss, ssrf, lfi, admin, cors]
-github_token: ghp_xxxx
+github_token: YOUR_GITHUB_TOKEN
 shodan_key: YOUR_SHODAN_KEY
 cve_live: true
 nvd_api_key: YOUR_NVD_API_KEY

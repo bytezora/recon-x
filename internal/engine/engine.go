@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -69,6 +70,7 @@ type Config struct {
 	Output            string
 	JSON              string
 	Wordlist          string
+	SubdomainFile     string
 	DirWordlist       string
 	Ports             string
 	Threads           int
@@ -189,6 +191,12 @@ func step1(e *Engine, res *Results, send func(tea.Msg)) {
 		send(ui.ItemMsg{
 			Icon: stylePurple.Render("↳"),
 			Text: styleMuted.Render("[crt.sh] " + r.Subdomain),
+		})
+	})
+	res.Subs = subdomain.AddSeedFile(res.Subs, e.cfg.SubdomainFile, e.cfg.Target, e.cfg.Resolver, func(r subdomain.Result) {
+		send(ui.ItemMsg{
+			Icon: stylePurple.Render("↳"),
+			Text: styleMuted.Render("[seed] " + r.Subdomain),
 		})
 	})
 	if e.cfg.ScopeFile != "" {
@@ -801,14 +809,30 @@ var steps = []StepFunc{
 
 func (e *Engine) Run(send func(tea.Msg), stateObj *state.State, stateFile string, ms map[int]bool) *Results {
 	res := &Results{}
+	if len(stateObj.Data) > 0 {
+		if err := json.Unmarshal(stateObj.Data, res); err != nil {
+			res = &Results{}
+			stateObj.CompletedSteps = nil
+			stateObj.Data = nil
+		}
+	} else if e.cfg.Resume && len(stateObj.CompletedSteps) > 0 {
+		stateObj.CompletedSteps = nil
+	}
 	for i, fn := range steps {
 		send(ui.StepStartMsg(i))
-		if !ms[i] || stateObj.Done(i) {
+		if !ms[i] {
 			send(ui.StepDoneMsg{Step: i, Count: 0})
+			continue
+		}
+		if stateObj.Done(i) {
+			send(ui.StepDoneMsg{Step: i, Count: stepCount(i, res)})
 			continue
 		}
 		fn(e, res, send)
 		stateObj.Mark(i)
+		if data, err := json.Marshal(res); err == nil {
+			stateObj.Data = data
+		}
 		state.Save(stateFile, stateObj)
 		send(ui.StepDoneMsg{Step: i, Count: stepCount(i, res)})
 	}
@@ -977,10 +1001,33 @@ func baseURLs(res *Results) []string {
 func parsePortList(s string) []int {
 	parts := strings.Split(s, ",")
 	ports := make([]int, 0, len(parts))
-	for _, p := range parts {
-		n, err := strconv.Atoi(strings.TrimSpace(p))
-		if err == nil && n > 0 && n < 65536 {
+	seen := make(map[int]bool)
+	add := func(n int) {
+		if n > 0 && n < 65536 && !seen[n] {
+			seen[n] = true
 			ports = append(ports, n)
+		}
+	}
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if strings.Contains(p, "-") {
+			bounds := strings.SplitN(p, "-", 2)
+			start, startErr := strconv.Atoi(strings.TrimSpace(bounds[0]))
+			end, endErr := strconv.Atoi(strings.TrimSpace(bounds[1]))
+			if startErr != nil || endErr != nil || start > end {
+				continue
+			}
+			for n := start; n <= end; n++ {
+				add(n)
+			}
+			continue
+		}
+		n, err := strconv.Atoi(p)
+		if err == nil {
+			add(n)
 		}
 	}
 	return ports

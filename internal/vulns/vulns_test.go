@@ -56,6 +56,16 @@ func TestCheckBanner_Match(t *testing.T) {
 	}
 }
 
+func TestFingerprintBannerOpenSSHSpaceVersion(t *testing.T) {
+	got := FingerprintBanner("host", 22, "OpenSSH 8.2p1")
+	if len(got) == 0 {
+		t.Fatal("expected OpenSSH fingerprint")
+	}
+	if got[0].Product != "openssh" || got[0].Version != "8.2p1" {
+		t.Fatalf("unexpected fingerprint: %+v", got[0])
+	}
+}
+
 func TestCheckBanner_NoMatch(t *testing.T) {
 	matches := CheckBanner("host", 22, "SSH-2.0-OpenSSH_9.9")
 	if len(matches) != 0 {
