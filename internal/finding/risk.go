@@ -1,6 +1,11 @@
 package finding
 
-import "sort"
+import (
+	"crypto/sha256"
+	"fmt"
+	"sort"
+	"strings"
+)
 
 func EnrichAndSort(in []Finding) []Finding {
 	out := make([]Finding, len(in))
@@ -9,6 +14,9 @@ func EnrichAndSort(in []Finding) []Finding {
 		score := calculateRiskScore(out[i])
 		out[i].RiskScore = score
 		out[i].Priority = priorityFromScore(score)
+		if out[i].Fingerprint == "" {
+			out[i].Fingerprint = Fingerprint(out[i])
+		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].RiskScore == out[j].RiskScore {
@@ -17,6 +25,18 @@ func EnrichAndSort(in []Finding) []Finding {
 		return out[i].RiskScore > out[j].RiskScore
 	})
 	return out
+}
+
+func Fingerprint(f Finding) string {
+	parts := []string{
+		string(f.Type),
+		string(f.Severity),
+		strings.ToLower(strings.TrimSpace(f.AffectedURL)),
+		strings.ToLower(strings.TrimSpace(f.CVE)),
+		strings.ToLower(strings.TrimSpace(f.Title)),
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return "rx1:" + fmt.Sprintf("%x", sum[:])[:16]
 }
 
 func calculateRiskScore(f Finding) int {

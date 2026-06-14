@@ -8,15 +8,29 @@ import (
 
 type Config struct {
 	Targets           []string `yaml:"targets"`
+	TargetType        string   `yaml:"target_type"`
+	RepoPath          string   `yaml:"repo_path"`
+	BaseURL           string   `yaml:"base_url"`
+	Project           string   `yaml:"project"`
+	ProjectName       string   `yaml:"project_name"`
+	StoreDir          string   `yaml:"store_dir"`
+	Profile           string   `yaml:"profile"`
+	Scanners          []string `yaml:"scanners"`
 	Modules           []string `yaml:"modules"`
 	Threads           int      `yaml:"threads"`
 	OutputDir         string   `yaml:"output_dir"`
 	OutputFormat      string   `yaml:"output_format"`
+	Baseline          string   `yaml:"baseline"`
+	Allowlist         string   `yaml:"allowlist"`
+	FailOn            string   `yaml:"fail_on"`
 	SubdomainFile     string   `yaml:"subdomain_file"`
 	Retries           int      `yaml:"retries"`
 	Rate              int      `yaml:"rate"`
 	Silent            bool     `yaml:"silent"`
+	NoTUI             bool     `yaml:"no_tui"`
 	Verbose           bool     `yaml:"verbose"`
+	ShowSecrets       bool     `yaml:"show_secrets"`
+	RedactPercent     int      `yaml:"redact_percent"`
 	GithubToken       string   `yaml:"github_token"`
 	Templates         []string `yaml:"templates"`
 	Resolver          string   `yaml:"resolver"`
@@ -47,9 +61,11 @@ func Load(path string) (*Config, error) {
 
 func Default() *Config {
 	return &Config{
-		Threads:      50,
-		OutputFormat: "html",
-		Retries:      2,
-		Rate:         50,
+		Threads:       50,
+		Profile:       "standard",
+		OutputFormat:  "html",
+		Retries:       2,
+		Rate:          50,
+		RedactPercent: 100,
 	}
 }

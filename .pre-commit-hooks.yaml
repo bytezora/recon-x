@@ -1,0 +1,6 @@
+- id: recon-x-source
+  name: recon-x source-aware scan
+  description: Run recon-x source-aware scanners before commit.
+  entry: recon-x scan repo . --profile ci --scanners secrets,config --fail-on high
+  language: system
+  pass_filenames: false

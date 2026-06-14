@@ -5,10 +5,13 @@
 
 # Local scan outputs
 reports/
+.reconx/
 report.html
+report.md
 out.json
 out.sarif
 scan.json
+scan.sarif
 diff.txt
 cve-evidence.json
 cve-assurance.json

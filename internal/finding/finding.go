@@ -19,6 +19,7 @@ const (
 )
 
 type Finding struct {
+	Fingerprint        string     `json:"fingerprint"`
 	Type               string     `json:"type"`
 	Severity           Severity   `json:"severity"`
 	Confidence         Confidence `json:"confidence"`

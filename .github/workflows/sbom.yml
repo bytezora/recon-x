@@ -1,0 +1,27 @@
+name: SBOM
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: recon-x.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recon-x-sbom
+          path: recon-x.spdx.json

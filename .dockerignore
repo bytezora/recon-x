@@ -3,12 +3,15 @@
 .env
 .env.*
 reports
+.reconx
 tools
 *.recon-x-state.json
 report.html
+report.md
 out.json
 out.sarif
 scan.json
+scan.sarif
 diff.txt
 cve-evidence.json
 cve-assurance.json

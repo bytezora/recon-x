@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bytezora/recon-x/internal/cors"
 	"github.com/bytezora/recon-x/internal/defaultcreds"
+	"github.com/bytezora/recon-x/internal/finding"
 	"github.com/bytezora/recon-x/internal/sqli"
 	"github.com/bytezora/recon-x/internal/takeover"
 	"github.com/bytezora/recon-x/internal/templates"
@@ -63,6 +65,51 @@ type sarifPhysLoc struct {
 
 type sarifArtLoc struct {
 	URI string `json:"uri"`
+}
+
+func WriteFindingsSARIF(path, version string, findings []finding.Finding) error {
+	ruleSeen := map[string]bool{}
+	var rules []sarifRule
+	var results []sarifResult
+	for _, f := range findings {
+		ruleID := strings.ToUpper(f.Type)
+		if f.CVE != "" {
+			ruleID = f.CVE
+		}
+		if !ruleSeen[ruleID] {
+			ruleSeen[ruleID] = true
+			rules = append(rules, sarifRule{
+				ID:               ruleID,
+				Name:             f.Title,
+				ShortDescription: sarifMessage{Text: f.Reason},
+			})
+		}
+		results = append(results, sarifResult{
+			RuleID:  ruleID,
+			Level:   sarifLevelForSeverity(f.Severity),
+			Message: sarifMessage{Text: fmt.Sprintf("%s [%s] %s — %s", f.Title, f.Fingerprint, f.AffectedURL, f.Evidence)},
+			Locations: []sarifLocation{{
+				PhysicalLocation: sarifPhysLoc{
+					ArtifactLocation: sarifArtLoc{URI: f.AffectedURL},
+				},
+			}},
+		})
+	}
+	if len(rules) == 0 {
+		rules = []sarifRule{{ID: "RECONX", Name: "recon-x", ShortDescription: sarifMessage{Text: "No active findings"}}}
+	}
+	return writeSARIFLog(path, version, rules, results)
+}
+
+func sarifLevelForSeverity(sev finding.Severity) string {
+	switch sev {
+	case finding.Critical, finding.High:
+		return "error"
+	case finding.Medium:
+		return "warning"
+	default:
+		return "note"
+	}
 }
 
 func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, takeoverRes []takeover.Result, corsRes []cors.Result, credsRes []defaultcreds.Result, tplMatches []templates.Match) error {
@@ -145,13 +192,17 @@ func WriteSARIF(path string, cveMatches []vulns.Match, sqliRes []sqli.Result, ta
 		})
 	}
 
+	return writeSARIFLog(path, "2.0.0", rules, results)
+}
+
+func writeSARIFLog(path, version string, rules []sarifRule, results []sarifResult) error {
 	log := sarifLog{
 		Version: "2.1.0",
 		Schema:  "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
 		Runs: []sarifRun{{
 			Tool: sarifTool{Driver: sarifDriver{
 				Name:           "recon-x",
-				Version:        "2.0.0",
+				Version:        version,
 				InformationURI: "https://github.com/bytezora/recon-x",
 				Rules:          rules,
 			}},

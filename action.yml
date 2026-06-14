@@ -1,0 +1,80 @@
+name: recon-x
+description: Run recon-x in CI and upload JSON/SARIF/Markdown/HTML artifacts.
+inputs:
+  target:
+    description: Domain target to scan.
+    required: false
+  repo:
+    description: Repository path for source-aware scanning.
+    required: false
+    default: "."
+  mode:
+    description: Scan mode: domain or repo.
+    required: false
+    default: "repo"
+  profile:
+    description: Scan profile.
+    required: false
+    default: "ci"
+  scanners:
+    description: Comma-separated scanners.
+    required: false
+    default: ""
+  baseline:
+    description: Previous recon-x JSON report.
+    required: false
+    default: ""
+  project:
+    description: Recon-x workspace project id for scan inventory.
+    required: false
+    default: ""
+  project-name:
+    description: Recon-x workspace project display name.
+    required: false
+    default: ""
+  store-dir:
+    description: Workspace directory. Defaults inside output-dir when project is set.
+    required: false
+    default: ""
+  fail-on:
+    description: Severity threshold that fails the job.
+    required: false
+    default: "high"
+  output-dir:
+    description: Output directory.
+    required: false
+    default: "recon-x-results"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.25.x"
+        cache: true
+    - name: Install recon-x
+      shell: bash
+      run: go install github.com/bytezora/recon-x@latest
+    - name: Run recon-x
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "${{ inputs.output-dir }}"
+        args=(--profile "${{ inputs.profile }}" --fail-on "${{ inputs.fail-on }}" --output-dir "${{ inputs.output-dir }}")
+        if [ -n "${{ inputs.scanners }}" ]; then args+=(--scanners "${{ inputs.scanners }}"); fi
+        if [ -n "${{ inputs.baseline }}" ]; then args+=(--baseline "${{ inputs.baseline }}"); fi
+        if [ -n "${{ inputs.project }}" ]; then
+          store_dir="${{ inputs.store-dir }}"
+          if [ -z "$store_dir" ]; then store_dir="${{ inputs.output-dir }}/workspace"; fi
+          args+=(--project "${{ inputs.project }}" --store-dir "$store_dir")
+          if [ -n "${{ inputs.project-name }}" ]; then args+=(--name "${{ inputs.project-name }}"); fi
+        fi
+        if [ "${{ inputs.mode }}" = "domain" ]; then
+          recon-x scan domain "${{ inputs.target }}" "${args[@]}"
+        else
+          recon-x scan repo "${{ inputs.repo }}" "${args[@]}"
+        fi
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: recon-x-results
+        path: ${{ inputs.output-dir }}

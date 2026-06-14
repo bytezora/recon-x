@@ -12,10 +12,10 @@
 </p>
 
 <p align="center">
-  <b>Fast attack-surface reconnaissance with CVE evidence, Nmap import, SARIF, Markdown and self-contained HTML reports.</b>
+  <b>Fast attack-surface and source-aware reconnaissance with CVE evidence, SARIF, Markdown and self-contained HTML reports.</b>
 </p>
 
-`recon-x` is an authorized security reconnaissance tool for bug bounty, pentest and DevSecOps workflows. One command runs 35 modules across passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, XSS, SSRF, LFI, Host Header Injection, JWT analysis, Wayback Machine, Shodan, XXE, Command Injection, GraphQL and custom templates.
+`recon-x` is an authorized security reconnaissance tool for bug bounty, pentest and DevSecOps workflows. It supports two first-class targets: external domains and source repositories. One command runs 35 domain modules across passive OSINT, DNS, ports, HTTP, CVE matching, WAF, TLS, CORS, SQLi, XSS, SSRF, LFI, Host Header Injection, JWT analysis, Wayback Machine, Shodan, XXE, Command Injection, GraphQL and custom templates, plus source-aware scanners for secrets, dependency manifests, risky config and route inventory.
 
 > Findings are indicators, not confirmed vulnerabilities. Scan only authorized targets.
 
@@ -34,11 +34,15 @@
 - [Screenshots](#screenshots)
 - [Install](#install)
 - [Usage](#usage)
+- [Source-aware scanning](#source-aware-scanning)
+- [Workspace projects](#workspace-projects)
+- [API server](#api-server)
 - [Flags](#flags)
 - [Modules](#modules)
 - [CVE matching](#cve-matching)
 - [Output](#output)
 - [Config file](#config-file)
+- [CI and automation](#ci-and-automation)
 - [Documentation](#documentation)
 - [Safety](#safety)
 
@@ -51,13 +55,19 @@
 | Web checks | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection |
 | CVE intelligence | 177 offline CVE signatures across 48 products, live NVD enrichment, CISA KEV, FIRST EPSS and strict precision profiles |
 | Evidence | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs |
-| Reporting | Self-contained HTML, JSON, Markdown, SARIF and scan-to-scan diffing |
+| Source-aware | Repository scanning for secrets, dependency manifests, risky config and application routes |
+| Reporting | Self-contained HTML, JSON, Markdown, SARIF, local report serving and scan-to-scan diffing |
+| Product core | Local workspace projects, scan inventory, triage state, quotas, audit trail, REST API and RBAC policy engine |
+| Automation | CI profile, stable fingerprints, baseline suppression, `.reconxignore`, fail gates, GitHub Action and pre-commit hook |
 
 ## Current Snapshot
 
 | Metric | Value |
 |--------|------:|
 | Recon modules | 35 |
+| Source scanners | 4 |
+| Workspace model | Projects + scans + findings + triage + quotas + audit |
+| API layer | Bearer-token REST API + role policy + scoped project access |
 | Built-in YAML templates | 54 |
 | Offline CVE signatures | 177 |
 | CVE product families | 48 |
@@ -80,7 +90,7 @@
 go install github.com/bytezora/recon-x@latest
 
 # docker
-docker run --rm ghcr.io/bytezora/recon-x:latest -target example.com
+docker run --rm ghcr.io/bytezora/recon-x:latest scan domain example.com
 
 # pre-built binary
 # download from Releases ↓
@@ -93,11 +103,47 @@ docker run --rm ghcr.io/bytezora/recon-x:latest -target example.com
 ## Usage
 
 ```bash
-# full scan
-recon-x -target example.com
+# recommended default scan (safe-by-default standard profile)
+recon-x scan domain example.com --output-dir results/example
+
+# minimal passive/light scan
+recon-x scan domain example.com --profile safe
+
+# authorized active checks (SQLi, XSS, SSRF, LFI, XXE, CMDi, default creds)
+recon-x scan domain example.com --profile active
 
 # specific modules only
 recon-x -target example.com -modules subdomain,port,http,sqli,xss,ssrf,lfi
+
+# CI-friendly run: no TUI, JSON, SARIF and Markdown defaults
+recon-x scan domain example.com --profile ci --output-dir results/example
+
+# source-aware scan for the current repository
+recon-x scan repo . --profile ci --scanners secrets,deps,config,routes --output-dir results/source
+
+# RBAC-ready local project inventory
+recon-x project init acme-api --name "Acme API"
+recon-x scan repo . --profile ci --project acme-api --output-dir results/source
+recon-x project list
+recon-x project show acme-api
+recon-x project export acme-api --output acme-api.project.json
+
+# local RBAC-ready API over the workspace
+recon-x api serve --api-token dev-owner:owner:* --api-listen 127.0.0.1:8090
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/v1/projects
+
+# correlate discovered source routes with a running app
+recon-x scan repo . --url http://localhost:3000 --scanners routes,config --output-dir results/source
+
+# scanner groups for domain mode
+recon-x scan domain example.com --scanners dns,http,tls,cve,secrets,cloud --profile ci
+
+# compare only new findings against a previous JSON report
+recon-x scan domain example.com --profile ci --baseline results/example/scan.json --output-dir results/latest
+
+# open the self-contained HTML or JSON report locally
+recon-x report serve results/example/report.html
+recon-x report serve results/source/scan.json
 
 # with Burp proxy + GitHub token
 recon-x -target example.com -proxy http://127.0.0.1:8080 -github-token YOUR_GITHUB_TOKEN
@@ -132,21 +178,127 @@ recon-x -target example.com -resume
 cat targets.txt | recon-x
 ```
 
+### Profiles
+
+`recon-x` uses scan profiles so the default workflow is useful without being reckless:
+
+| Profile | Use |
+|---------|-----|
+| `safe` | Passive/minimal attack-surface mapping: DNS, ports, HTTP, TLS, WHOIS, ASN and Wayback |
+| `standard` | Default workflow: `safe` plus paths, JS, buckets, CORS, GraphQL, admin discovery and templates |
+| `active` | Authorized active testing: SQLi, XSS, SSRF, LFI, XXE, Command Injection, default credentials and bypass checks |
+| `proof` | Active checks plus stricter CVE evidence defaults for staging/lab proof runs |
+| `ci` | No-TUI deterministic workflow with JSON, SARIF and Markdown output defaults |
+| `full` | Explicit compatibility profile that enables every module |
+
+```bash
+recon-x profiles
+```
+
+### Source-aware scanning
+
+Repository scans are designed for local development and CI. They do not execute exploits; they inspect source files and emit the same finding model, fingerprints, JSON, Markdown, SARIF and HTML artifacts used by domain scans.
+
+```bash
+recon-x scan repo . --profile ci
+recon-x scan repo C:\work\my-app --url http://localhost:3000 --scanners all
+```
+
+| Scanner | Finds |
+|---------|-------|
+| `secrets` | API keys, provider tokens, private keys and database URLs with redacted evidence by default |
+| `deps` | `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, Maven, Gradle, Ruby and Composer manifests |
+| `config` | Debug mode, wildcard CORS, disabled TLS verification and permissive bind settings |
+| `routes` | Express, Nest-style decorators, Django, Flask/FastAPI and Go HTTP routes |
+
+Domain mode also supports scanner groups that expand to modules:
+
+```bash
+recon-x scan domain example.com --scanners dns,http,tls,cve,web
+```
+
+Available domain groups: `dns`, `http`, `tls`, `cve`, `secrets`, `cloud`, `osint`, `takeover`, `web`, `all`.
+
+### Workspace projects
+
+`recon-x` can keep a local project inventory under `.reconx/`. A project is the future RBAC boundary: today it groups scans and latest risk summaries; later it maps cleanly to organizations, project membership, roles, audit logs and usage limits.
+
+```bash
+recon-x project init acme-api --name "Acme API"
+recon-x scan repo . --profile ci --project acme-api --output-dir results/source
+recon-x scan domain example.com --profile ci --project acme-api --output-dir results/domain
+recon-x project list
+recon-x project show acme-api
+recon-x project import acme-api results/source/scan.json
+recon-x project export acme-api --output acme-api.project.json
+```
+
+Workspace layout:
+
+```text
+.reconx/
+  projects/
+    acme-api/
+      project.json
+      scans/
+        20260615T010203Z-0123456789.json
+```
+
+### API server
+
+The local API exposes workspace projects, scans, findings and raw scan artifacts with bearer-token RBAC. Token format is `token:role[:project1|project2|*]`.
+
+```bash
+recon-x api serve --api-token dev-owner:owner:* --api-listen 127.0.0.1:8090
+```
+
+Example calls:
+
+```bash
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/healthz
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/v1/projects
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/v1/projects/acme-api
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/v1/projects/acme-api/findings
+curl -X PATCH -H "Authorization: Bearer dev-owner" -H "Content-Type: application/json" -d '{"status":"accepted","note":"known risk"}' http://127.0.0.1:8090/v1/projects/acme-api/findings/rx1:...
+curl -X PUT -H "Authorization: Bearer dev-owner" -H "Content-Type: application/json" -d '{"max_scans":50}' http://127.0.0.1:8090/v1/projects/acme-api/quota
+curl -H "Authorization: Bearer dev-owner" http://127.0.0.1:8090/v1/projects/acme-api/audit
+```
+
+Built-in roles: `owner`, `admin`, `analyst`, `viewer`, `ci-bot`.
+
 ### Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-target` | | Target domain |
+| `-repo` | | Source repository path for source-aware scanning |
+| `-url` | | Base URL used to correlate source routes with a running app |
+| `-project` | | Workspace project id for scan inventory import |
+| `-name` | | Project display name when creating/importing |
+| `-store-dir` | `.reconx` | Workspace directory for project inventory |
+| `-api-token` | `RECONX_API_TOKEN` | API bearer token spec: `token:role[:project1|project2|*]` |
+| `-api-listen` | `127.0.0.1:8090` | API listen address |
+| `-profile` | `standard` | Scan profile: `safe`, `standard`, `active`, `proof`, `ci`, `full` |
+| `-active` | | Shortcut for `-profile active` |
+| `-proof` | | Shortcut for `-profile proof` |
+| `-ci` | | Shortcut for `-profile ci -no-tui` |
 | `-output` | `report.html` | HTML output path |
 | `-json` | | JSON output path |
 | `-sarif` | | SARIF 2.1.0 output path |
 | `-markdown` | | Markdown report output path |
 | `-diff` | | Compare with previous JSON scan file |
-| `-modules` | all | Comma-separated module names |
+| `-baseline` | | Previous recon-x JSON report used to suppress known findings |
+| `-allowlist` | `.reconxignore` | Allowlist file for suppressing findings |
+| `-fail-on` | `high` in `ci`, otherwise off | Exit with code 1 for findings at or above severity: `critical`, `high`, `medium`, `low`, `info`, `none` |
+| `-scanners` | target-driven | Comma-separated scanner groups; domain: `dns,http,tls,cve,secrets,cloud,osint,web`; repo: `secrets,deps,config,routes` |
+| `-modules` | profile-driven | Comma-separated module names; overrides `-profile` |
 | `-ports` | 17 common | Custom port list |
 | `-threads` | `50` | Concurrency |
 | `-rate` | `50` | Max requests/sec |
 | `-retries` | `2` | HTTP retries |
+| `-no-tui` | | Disable interactive UI for CI/log files |
+| `-redact` | `100` | Secret redaction percentage for outputs |
+| `-show-secrets` | | Show raw secrets/default credentials in outputs; unsafe, opt-in only |
 | `-resolver` | system DNS | Custom DNS resolver (`1.1.1.1:53`) |
 | `-proxy` | | HTTP/HTTPS proxy (Burp, ZAP) |
 | `-github-token` | | GitHub token for dorking |
@@ -284,10 +436,12 @@ WAF fingerprinting: Cloudflare, Akamai, Imperva, AWS WAF, F5, Barracuda, ModSecu
 ```
 report.html   self-contained dark report, tabbed, all 35 modules
 report.md     Markdown report — CI-friendly, readable in GitHub
-out.json      machine-readable, full results
-out.sarif     SARIF 2.1.0 — GitHub Code Scanning / Defect Dojo
+scan.json     machine-readable, full domain or source-aware results
+scan.sarif    SARIF 2.1.0 — GitHub Code Scanning / Defect Dojo
 diff.txt      delta between two scans — new/resolved findings
 ```
+
+Use `recon-x report serve <file>` to open either `report.html` or a `scan.json` source/domain report in a local browser-friendly view.
 
 ---
 
@@ -295,11 +449,25 @@ diff.txt      delta between two scans — new/resolved findings
 
 ```yaml
 target: example.com
+target_type: domain
+repo_path: ""
+base_url: ""
+project: acme-api
+project_name: Acme API
+store_dir: ./.reconx
+profile: standard
+scanners: [dns, http, tls, cve]
 threads: 100
 rate: 30
 retries: 3
 resolver: 1.1.1.1:53
 modules: [subdomain, port, http, tls, sqli, xss, ssrf, lfi, admin, cors]
+no_tui: false
+redact_percent: 100
+show_secrets: false
+baseline: ./previous-scan.json
+allowlist: ./.reconxignore
+fail_on: high
 github_token: YOUR_GITHUB_TOKEN
 shodan_key: YOUR_SHODAN_KEY
 cve_live: true
@@ -317,11 +485,69 @@ templates:
   - ./custom-templates/
 ```
 
+### Baseline and allowlist
+
+Use `-baseline` to suppress findings that already existed in a previous recon-x JSON report. Every structured finding has a stable `fingerprint`, so CI can focus on new risk.
+
+`.reconxignore` supports:
+
+```text
+# exact finding fingerprint
+fingerprint:rx1:0123456789abcdef
+
+# suppress a finding type
+type:cors
+
+# suppress one CVE
+cve:CVE-2024-0001
+
+# suppress findings whose URL/title/evidence/reason contains text
+contains:staging.example.com
+```
+
+For CI:
+
+```bash
+recon-x scan domain example.com --profile ci --baseline baseline.json --fail-on high
+```
+
+---
+
+## CI and automation
+
+`recon-x` ships a composite GitHub Action and pre-commit hook definition.
+
+```yaml
+- uses: bytezora/recon-x@main
+  with:
+    mode: repo
+    repo: .
+    profile: ci
+    scanners: secrets,deps,config,routes
+    project: acme-api
+    fail-on: high
+```
+
+For pre-commit:
+
+```bash
+pre-commit install
+pre-commit run recon-x-source --all-files
+```
+
+The CI profile enables deterministic output, suppresses the TUI, writes JSON/SARIF/Markdown by default and can fail builds with `--fail-on`.
+
 ---
 
 ## Documentation
 
 - [CVE evidence methodology](docs/CVE_EVIDENCE.md)
+- [Scan profiles](docs/PROFILES.md)
+- [Source-aware scanning](docs/SOURCE_AWARE.md)
+- [Workspace projects](docs/WORKSPACE.md)
+- [Local API server](docs/API.md)
+- [RBAC-ready platform path](docs/RBAC_READY.md)
+- [CI, baselines and automation](docs/CI.md)
 - [CVE evidence example](docs/cve-evidence-example.json)
 - [Roadmap](docs/ROADMAP.md)
 

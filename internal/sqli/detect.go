@@ -120,7 +120,6 @@ var errorPayloads = []string{
 	"1' UNION SELECT NULL--",
 	"1 AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT version())))--",
 	"1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT version())),1)--",
-	"1; DROP TABLE users--",
 }
 
 type testResult struct {

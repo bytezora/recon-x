@@ -8,5 +8,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o recon-x .
 
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
+RUN addgroup -S reconx && adduser -S -G reconx reconx && mkdir -p /work && chown reconx:reconx /work
 COPY --from=builder /app/recon-x /usr/local/bin/recon-x
+WORKDIR /work
+USER reconx
 ENTRYPOINT ["recon-x"]

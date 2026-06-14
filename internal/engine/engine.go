@@ -67,6 +67,18 @@ var (
 
 type Config struct {
 	Target            string
+	TargetType        string
+	RepoPath          string
+	BaseURL           string
+	Project           string
+	ProjectName       string
+	ProjectCommand    string
+	ProjectScan       string
+	StoreDir          string
+	APICommand        string
+	APIToken          string
+	APIListen         string
+	Scanners          []string
 	Output            string
 	JSON              string
 	Wordlist          string
@@ -83,12 +95,19 @@ type Config struct {
 	NotifyTelegram    string
 	Resume            bool
 	ConfigFile        string
+	Profile           string
 	Modules           []string
 	OutputDir         string
+	Baseline          string
+	Allowlist         string
+	FailOn            string
 	Retries           int
 	Rate              int
 	Silent            bool
+	NoTUI             bool
 	Verbose           bool
+	ShowSecrets       bool
+	RedactPercent     int
 	TemplatePaths     []string
 	Resolver          string
 	ShodanKey         string
@@ -415,9 +434,13 @@ func step5(e *Engine, res *Results, send func(tea.Msg)) {
 		if f.Kind == "secret" {
 			icon = styleRed.Render("🔑")
 		}
+		value := f.Value
+		if f.Kind == "secret" && !e.cfg.ShowSecrets {
+			value = "[redacted]"
+		}
 		send(ui.ItemMsg{
 			Icon: icon,
-			Text: styleMuted.Render("["+f.Label+"]") + "  " + f.Value,
+			Text: styleMuted.Render("["+f.Label+"]") + "  " + value,
 		})
 	})
 }
@@ -645,9 +668,13 @@ func step23(e *Engine, res *Results, send func(tea.Msg)) {
 		}
 	}
 	res.DefaultCreds = defaultcreds.Check(loginURLs, func(r defaultcreds.Result) {
+		password := r.Password
+		if !e.cfg.ShowSecrets {
+			password = "[redacted]"
+		}
 		send(ui.ItemMsg{
 			Icon: stylePurple.Render("🔑"),
-			Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Username+":"+r.Password),
+			Text: styleMuted.Render(r.URL) + styleRed.Render(" "+r.Username+":"+password),
 		})
 	})
 }
@@ -973,7 +1000,11 @@ func sendNotifications(e *Engine, res *Results) {
 	}
 	for _, c := range res.DefaultCreds {
 		if c.Found {
-			ntfyCfg.Send("🚨 Default Credentials — "+e.cfg.Target, fmt.Sprintf("%s:%s at %s", c.Username, c.Password, c.URL))
+			password := c.Password
+			if !e.cfg.ShowSecrets {
+				password = "[redacted]"
+			}
+			ntfyCfg.Send("🚨 Default Credentials — "+e.cfg.Target, fmt.Sprintf("%s:%s at %s", c.Username, password, c.URL))
 		}
 	}
 }

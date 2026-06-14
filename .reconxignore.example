@@ -1,0 +1,16 @@
+# recon-x allowlist
+#
+# Copy this file to .reconxignore and keep only suppressions that are accepted
+# by your team. Baseline suppressions should normally use -baseline instead.
+
+# Suppress one exact finding.
+fingerprint:rx1:0123456789abcdef
+
+# Suppress all findings of one type.
+# type:cors
+
+# Suppress one CVE.
+# cve:CVE-2024-0001
+
+# Suppress findings whose URL/title/evidence/reason contains this text.
+# contains:staging.example.com
