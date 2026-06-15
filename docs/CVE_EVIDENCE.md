@@ -105,10 +105,7 @@ It always separates these two claims:
       "port": 8080,
       "product": "apache",
       "version": "2.4.49",
-      "expected_cves": [
-        "CVE-2021-41773",
-        "CVE-2021-42013"
-      ],
+      "expected_cves": ["CVE-2021-41773", "CVE-2021-42013"],
       "notes": "Pinned image digest sha256:..."
     }
   ]

@@ -17,7 +17,7 @@ type Result struct {
 	Param    string
 	Payload  string
 	Evidence string
-	Method   string // "error", "time", "output"
+	Method   string
 	Detected bool
 }
 
@@ -89,7 +89,6 @@ func testURL(client *http.Client, rawURL string) []Result {
 	seen := map[string]bool{}
 
 	for param := range params {
-		// Error-based
 		for _, payload := range errorPayloads {
 			testParams := cloneParams(params)
 			testParams.Set(param, testParams.Get(param)+payload)
@@ -130,7 +129,6 @@ func testURL(client *http.Client, rawURL string) []Result {
 			}
 		}
 
-		// Time-based
 		for _, payload := range timePayloads {
 			testParams := cloneParams(params)
 			testParams.Set(param, testParams.Get(param)+payload)
@@ -144,7 +142,6 @@ func testURL(client *http.Client, rawURL string) []Result {
 
 			timeClient := httpclient.New(12*time.Second, false)
 
-			// Baseline: measure normal response time before injection
 			baseReq, err := http.NewRequest("GET", rawURL, nil)
 			if err != nil {
 				continue
@@ -170,7 +167,6 @@ func testURL(client *http.Client, rawURL string) []Result {
 				io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 			}
-			// Only flag if response is at least 4s longer than baseline
 			if elapsed >= baseline+4*time.Second {
 				seen[key] = true
 				results = append(results, Result{
@@ -184,7 +180,6 @@ func testURL(client *http.Client, rawURL string) []Result {
 			}
 		}
 
-		// Output-based
 		for _, payload := range outputPayloads {
 			testParams := cloneParams(params)
 			testParams.Set(param, testParams.Get(param)+payload)

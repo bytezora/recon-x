@@ -63,13 +63,13 @@ When `--project` is set, recon-x ensures JSON output exists even outside the `ci
 
 In a server-backed edition, this local model maps directly to:
 
-| Local workspace | RBAC platform |
-|-----------------|---------------|
-| workspace root | organization or tenant |
-| project id | project resource |
-| scan metadata | scan job/run |
-| copied scan JSON | immutable artifact |
-| finding fingerprint | triage item id |
+| Local workspace         | RBAC platform                |
+| ----------------------- | ---------------------------- |
+| workspace root          | organization or tenant       |
+| project id              | project resource             |
+| scan metadata           | scan job/run                 |
+| copied scan JSON        | immutable artifact           |
+| finding fingerprint     | triage item id               |
 | latest severity summary | dashboard/project risk state |
 
 Keep project ids stable. They are intended to become API route keys and permission scopes.

@@ -83,7 +83,7 @@ func take(browser, url string) Result {
 		}
 	case <-time.After(20 * time.Second):
 		if cmd.Process != nil {
-			cmd.Process.Kill() //nolint:errcheck
+			cmd.Process.Kill()
 		}
 		return Result{URL: url, Error: "screenshot timeout"}
 	}

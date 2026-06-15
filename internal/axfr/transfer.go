@@ -44,7 +44,7 @@ func tryAXFR(domain, ns string) Result {
 		return Result{NS: ns, Err: err.Error()}
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(15 * time.Second)) //nolint:errcheck
+	conn.SetDeadline(time.Now().Add(15 * time.Second))
 
 	msg := buildQuery(domain, 252)
 	if err := sendMsg(conn, msg); err != nil {
@@ -106,7 +106,7 @@ func buildQuery(domain string, qtype uint16) []byte {
 	msg = append(msg, 0x00, 0x00)
 	msg = append(msg, encodeName(domain)...)
 	msg = append(msg, byte(qtype>>8), byte(qtype))
-	msg = append(msg, 0x00, 0x01) // QCLASS: IN
+	msg = append(msg, 0x00, 0x01)
 	return msg
 }
 
@@ -265,7 +265,7 @@ func parseResponse(data []byte) ([]Record, int, error) {
 
 	for i := 0; i < qdCount && offset < len(data); i++ {
 		_, offset = parseName(data, offset)
-		offset += 4 // QTYPE + QCLASS
+		offset += 4
 	}
 
 	var records []Record

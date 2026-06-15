@@ -19,7 +19,7 @@ type Result struct {
 	Param     string
 	Payload   string
 	Evidence  string
-	Context   string // "script", "attribute", "html", "header"
+	Context   string
 	Reflected bool
 }
 

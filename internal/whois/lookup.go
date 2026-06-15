@@ -86,9 +86,9 @@ func query(server, domain string) (string, error) {
 		return "", err
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(10 * time.Second)) //nolint:errcheck
+	conn.SetDeadline(time.Now().Add(10 * time.Second))
 
-	fmt.Fprintf(conn, "%s\r\n", domain) //nolint:errcheck
+	fmt.Fprintf(conn, "%s\r\n", domain)
 
 	var sb strings.Builder
 	scanner := bufio.NewScanner(conn)

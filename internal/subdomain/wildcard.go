@@ -6,8 +6,6 @@ import (
 	"math/rand"
 )
 
-// DetectWildcard checks if the domain has wildcard DNS by resolving a random subdomain.
-// Returns (true, wildcardIPs) if wildcard is detected.
 func DetectWildcard(domain string, resolverAddr string) (bool, []string) {
 	resolver := newResolver(resolverAddr)
 	randSub := fmt.Sprintf("probe-%s.%s", randHex8(), domain)
@@ -42,11 +40,10 @@ func wildcardFilter(results []Result, wildcardIPs []string) []Result {
 
 	filtered := results[:0]
 	for _, r := range results {
-		// allWildcard: assume true only when IPs exist (no-IP entries are kept as-is)
 		allWildcard := len(r.IPs) > 0
 		for _, ip := range r.IPs {
 			if !wildcardSet[ip] {
-				allWildcard = false // at least one real (non-wildcard) IP found
+				allWildcard = false
 				break
 			}
 		}

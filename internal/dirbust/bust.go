@@ -34,7 +34,7 @@ func interesting(code int) bool {
 var client = &http.Client{
 	Timeout: requestTimeout,
 	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	},
 	CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -63,7 +63,7 @@ func Bust(baseURLs []string, pathsFile string, threads int, onFound func(Hit)) [
 				if err != nil {
 					return
 				}
-				io.Copy(io.Discard, resp.Body) //nolint:errcheck
+				io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 
 				if !interesting(resp.StatusCode) {

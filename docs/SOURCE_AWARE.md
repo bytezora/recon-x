@@ -14,12 +14,12 @@ recon-x scan repo . --profile ci --project acme-api --output-dir results/source
 
 ## Scanners
 
-| Scanner | Purpose |
-|---------|---------|
-| `secrets` | Detects common API keys, provider tokens, private keys and database URLs. Evidence is redacted unless `--show-secrets` is set. |
-| `deps` | Reads dependency manifests such as `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, Maven, Gradle, Ruby and Composer files. |
-| `config` | Flags risky production settings such as debug mode, wildcard CORS, disabled TLS verification and broad bind addresses. |
-| `routes` | Discovers application routes from Express, Nest-style decorators, Django, Flask/FastAPI and Go HTTP handlers. |
+| Scanner   | Purpose                                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `secrets` | Detects common API keys, provider tokens, private keys and database URLs. Evidence is redacted unless `--show-secrets` is set.             |
+| `deps`    | Reads dependency manifests such as `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, Maven, Gradle, Ruby and Composer files. |
+| `config`  | Flags risky production settings such as debug mode, wildcard CORS, disabled TLS verification and broad bind addresses.                     |
+| `routes`  | Discovers application routes from Express, Nest-style decorators, Django, Flask/FastAPI and Go HTTP handlers.                              |
 
 Use `--scanners all` or omit `--scanners` to run the full source-aware set.
 

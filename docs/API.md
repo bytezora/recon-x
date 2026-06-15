@@ -30,13 +30,13 @@ recon-x api serve --api-token ci-secret:ci-bot:acme-api
 
 Built-in roles:
 
-| Role | Intended use |
-|------|--------------|
-| `owner` | Full local API access |
-| `admin` | Manage projects, scans, findings and baselines |
-| `analyst` | Run/read scans and triage findings |
-| `viewer` | Read-only access |
-| `ci-bot` | CI worker token for scan creation/import and artifact reads |
+| Role      | Intended use                                                |
+| --------- | ----------------------------------------------------------- |
+| `owner`   | Full local API access                                       |
+| `admin`   | Manage projects, scans, findings and baselines              |
+| `analyst` | Run/read scans and triage findings                          |
+| `viewer`  | Read-only access                                            |
+| `ci-bot`  | CI worker token for scan creation/import and artifact reads |
 
 ## Endpoints
 

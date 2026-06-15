@@ -7,4 +7,9 @@ request:
   path: /server-status
 matchers:
   - type: word
-    words: ["Apache Server Status", "Server uptime", "requests currently being processed"]
+    words:
+      [
+        "Apache Server Status",
+        "Server uptime",
+        "requests currently being processed",
+      ]

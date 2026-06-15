@@ -29,7 +29,7 @@ var weakProtos = map[uint16]bool{
 }
 
 var weakCiphers = map[uint16]bool{
-	0x0004:                               true, // TLS_RSA_WITH_RC4_128_MD5
+	0x0004:                               true,
 	tls.TLS_RSA_WITH_RC4_128_SHA:         true,
 	tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:    true,
 	tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:   true,
@@ -72,7 +72,7 @@ func analyze(host string, port int) *Result {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	dialer := &net.Dialer{Timeout: 8 * time.Second}
 	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{
-		InsecureSkipVerify: true, //nolint:gosec
+		InsecureSkipVerify: true,
 		ServerName:         host,
 		MinVersion:         tls.VersionTLS10,
 	})

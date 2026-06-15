@@ -48,32 +48,32 @@
 
 ## Highlights
 
-| Area | Capability |
-|------|------------|
-| Discovery | Passive OSINT, subdomain brute-force, vhost discovery, ASN, WHOIS, Wayback and Shodan enrichment |
-| Network | TCP ports, banner grabbing, Nmap XML import, HTTP probing, TLS checks and screenshots |
-| Web checks | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection |
+| Area             | Capability                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Discovery        | Passive OSINT, subdomain brute-force, vhost discovery, ASN, WHOIS, Wayback and Shodan enrichment                       |
+| Network          | TCP ports, banner grabbing, Nmap XML import, HTTP probing, TLS checks and screenshots                                  |
+| Web checks       | CORS, open redirect, SQLi, XSS, SSRF, LFI, XXE, Command Injection, JWT and Host Header Injection                       |
 | CVE intelligence | 177 offline CVE signatures across 48 products, live NVD enrichment, CISA KEV, FIRST EPSS and strict precision profiles |
-| Evidence | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs |
-| Source-aware | Repository scanning for secrets, dependency manifests, risky config and application routes |
-| Reporting | Self-contained HTML, JSON, Markdown, SARIF, local report serving and scan-to-scan diffing |
-| Product core | Local workspace projects, scan inventory, triage state, quotas, audit trail, REST API and RBAC policy engine |
-| Automation | CI profile, stable fingerprints, baseline suppression, `.reconxignore`, fail gates, GitHub Action and pre-commit hook |
+| Evidence         | CVE proof mode against ground truth and real-domain assurance reports for public service/version CVEs                  |
+| Source-aware     | Repository scanning for secrets, dependency manifests, risky config and application routes                             |
+| Reporting        | Self-contained HTML, JSON, Markdown, SARIF, local report serving and scan-to-scan diffing                              |
+| Product core     | Local workspace projects, scan inventory, triage state, quotas, audit trail, REST API and RBAC policy engine           |
+| Automation       | CI profile, stable fingerprints, baseline suppression, `.reconxignore`, fail gates, GitHub Action and pre-commit hook  |
 
 ## Current Snapshot
 
-| Metric | Value |
-|--------|------:|
-| Recon modules | 35 |
-| Source scanners | 4 |
-| Workspace model | Projects + scans + findings + triage + quotas + audit |
-| API layer | Bearer-token REST API + role policy + scoped project access |
-| Built-in YAML templates | 54 |
-| Offline CVE signatures | 177 |
-| CVE product families | 48 |
-| Default TCP ports | 17 |
-| Output formats | HTML, JSON, Markdown, SARIF |
-| CVE proof workflows | Ground-truth evidence + real-domain assurance |
+| Metric                  |                                                       Value |
+| ----------------------- | ----------------------------------------------------------: |
+| Recon modules           |                                                          35 |
+| Source scanners         |                                                           4 |
+| Workspace model         |       Projects + scans + findings + triage + quotas + audit |
+| API layer               | Bearer-token REST API + role policy + scoped project access |
+| Built-in YAML templates |                                                          54 |
+| Offline CVE signatures  |                                                         177 |
+| CVE product families    |                                                          48 |
+| Default TCP ports       |                                                          17 |
+| Output formats          |                                 HTML, JSON, Markdown, SARIF |
+| CVE proof workflows     |               Ground-truth evidence + real-domain assurance |
 
 ## Screenshots
 
@@ -182,14 +182,14 @@ cat targets.txt | recon-x
 
 `recon-x` uses scan profiles so the default workflow is useful without being reckless:
 
-| Profile | Use |
-|---------|-----|
-| `safe` | Passive/minimal attack-surface mapping: DNS, ports, HTTP, TLS, WHOIS, ASN and Wayback |
-| `standard` | Default workflow: `safe` plus paths, JS, buckets, CORS, GraphQL, admin discovery and templates |
-| `active` | Authorized active testing: SQLi, XSS, SSRF, LFI, XXE, Command Injection, default credentials and bypass checks |
-| `proof` | Active checks plus stricter CVE evidence defaults for staging/lab proof runs |
-| `ci` | No-TUI deterministic workflow with JSON, SARIF and Markdown output defaults |
-| `full` | Explicit compatibility profile that enables every module |
+| Profile    | Use                                                                                                            |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `safe`     | Passive/minimal attack-surface mapping: DNS, ports, HTTP, TLS, WHOIS, ASN and Wayback                          |
+| `standard` | Default workflow: `safe` plus paths, JS, buckets, CORS, GraphQL, admin discovery and templates                 |
+| `active`   | Authorized active testing: SQLi, XSS, SSRF, LFI, XXE, Command Injection, default credentials and bypass checks |
+| `proof`    | Active checks plus stricter CVE evidence defaults for staging/lab proof runs                                   |
+| `ci`       | No-TUI deterministic workflow with JSON, SARIF and Markdown output defaults                                    |
+| `full`     | Explicit compatibility profile that enables every module                                                       |
 
 ```bash
 recon-x profiles
@@ -204,12 +204,12 @@ recon-x scan repo . --profile ci
 recon-x scan repo C:\work\my-app --url http://localhost:3000 --scanners all
 ```
 
-| Scanner | Finds |
-|---------|-------|
-| `secrets` | API keys, provider tokens, private keys and database URLs with redacted evidence by default |
-| `deps` | `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, Maven, Gradle, Ruby and Composer manifests |
-| `config` | Debug mode, wildcard CORS, disabled TLS verification and permissive bind settings |
-| `routes` | Express, Nest-style decorators, Django, Flask/FastAPI and Go HTTP routes |
+| Scanner   | Finds                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| `secrets` | API keys, provider tokens, private keys and database URLs with redacted evidence by default                |
+| `deps`    | `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, Maven, Gradle, Ruby and Composer manifests |
+| `config`  | Debug mode, wildcard CORS, disabled TLS verification and permissive bind settings                          |
+| `routes`  | Express, Nest-style decorators, Django, Flask/FastAPI and Go HTTP routes                                   |
 
 Domain mode also supports scanner groups that expand to modules:
 
@@ -268,113 +268,113 @@ Built-in roles: `owner`, `admin`, `analyst`, `viewer`, `ci-bot`.
 
 ### Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-target` | | Target domain |
-| `-repo` | | Source repository path for source-aware scanning |
-| `-url` | | Base URL used to correlate source routes with a running app |
-| `-project` | | Workspace project id for scan inventory import |
-| `-name` | | Project display name when creating/importing |
-| `-store-dir` | `.reconx` | Workspace directory for project inventory |
-| `-api-token` | `RECONX_API_TOKEN` | API bearer token spec: `token:role[:project1|project2|*]` |
-| `-api-listen` | `127.0.0.1:8090` | API listen address |
-| `-profile` | `standard` | Scan profile: `safe`, `standard`, `active`, `proof`, `ci`, `full` |
-| `-active` | | Shortcut for `-profile active` |
-| `-proof` | | Shortcut for `-profile proof` |
-| `-ci` | | Shortcut for `-profile ci -no-tui` |
-| `-output` | `report.html` | HTML output path |
-| `-json` | | JSON output path |
-| `-sarif` | | SARIF 2.1.0 output path |
-| `-markdown` | | Markdown report output path |
-| `-diff` | | Compare with previous JSON scan file |
-| `-baseline` | | Previous recon-x JSON report used to suppress known findings |
-| `-allowlist` | `.reconxignore` | Allowlist file for suppressing findings |
-| `-fail-on` | `high` in `ci`, otherwise off | Exit with code 1 for findings at or above severity: `critical`, `high`, `medium`, `low`, `info`, `none` |
-| `-scanners` | target-driven | Comma-separated scanner groups; domain: `dns,http,tls,cve,secrets,cloud,osint,web`; repo: `secrets,deps,config,routes` |
-| `-modules` | profile-driven | Comma-separated module names; overrides `-profile` |
-| `-ports` | 17 common | Custom port list |
-| `-threads` | `50` | Concurrency |
-| `-rate` | `50` | Max requests/sec |
-| `-retries` | `2` | HTTP retries |
-| `-no-tui` | | Disable interactive UI for CI/log files |
-| `-redact` | `100` | Secret redaction percentage for outputs |
-| `-show-secrets` | | Show raw secrets/default credentials in outputs; unsafe, opt-in only |
-| `-resolver` | system DNS | Custom DNS resolver (`1.1.1.1:53`) |
-| `-proxy` | | HTTP/HTTPS proxy (Burp, ZAP) |
-| `-github-token` | | GitHub token for dorking |
-| `-shodan-key` | | Shodan API key for passive recon |
-| `-cve-live` | | Enrich detected CPEs from live NVD, CISA KEV and FIRST EPSS feeds |
-| `-nvd-api-key` | | NVD API key for higher CVE enrichment rate limits |
-| `-cve-timeout` | `45` | Timeout in seconds for live CVE enrichment |
-| `-nmap-xml` | | Import Nmap XML (`-oX`) service/version/CPE results |
-| `-skip-portscan` | | Skip built-in TCP scan, useful when importing Nmap XML |
-| `-cve-profile` | `balanced` | CVE precision profile: `balanced`, `strict`, `broad`, `kev` |
-| `-cve-min-confidence` | | Minimum CVE confidence: `low`, `medium`, `high`, `confirmed` |
-| `-cve-require-version` | | Report CVEs only when product version evidence exists |
-| `-cve-only-kev` | | Report only CISA KEV known-exploited CVEs |
-| `-cve-min-cvss` | `0` | Minimum CVSS for CVE reporting |
-| `-cve-evidence` | | Ground-truth JSON file for CVE accuracy proof mode |
-| `-cve-evidence-scan` | | Recon-x JSON report to compare with `-cve-evidence` |
-| `-cve-evidence-report` | `cve-evidence.json` | Machine-readable evidence report |
-| `-cve-evidence-markdown` | | Human-readable evidence report |
-| `-cve-evidence-threshold` | `0.90` | Minimum precision and recall required for PASS |
-| `-cve-assurance` | | Recon-x JSON report to evaluate 90% CVE claim readiness for an authorized domain |
-| `-cve-assurance-report` | `cve-assurance.json` | Machine-readable assurance report |
-| `-cve-assurance-markdown` | | Human-readable assurance report |
-| `-cve-assurance-threshold` | `0.90` | Minimum evidence coverage required for public-service CVE assurance |
-| `-scope-file` | | In-scope entries, one per line |
-| `-config` | | YAML config file |
-| `-resume` | | Continue from last completed step |
-| `-notify-slack` | | Slack webhook for critical alerts |
-| `-notify-telegram` | | `TOKEN@CHATID` for Telegram alerts |
-| `-wordlist` | embedded | Subdomain wordlist |
-| `-dir-wordlist` | embedded | Directory brute-force wordlist |
-| `-output-dir` | | Directory for all output files |
-| `-silent` | | Suppress non-critical output |
-| `-verbose` | | Verbose output |
-| `-version` | | Print version |
+| Flag                       | Default                       | Description                                                                                                            |
+| -------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------- | ---- |
+| `-target`                  |                               | Target domain                                                                                                          |
+| `-repo`                    |                               | Source repository path for source-aware scanning                                                                       |
+| `-url`                     |                               | Base URL used to correlate source routes with a running app                                                            |
+| `-project`                 |                               | Workspace project id for scan inventory import                                                                         |
+| `-name`                    |                               | Project display name when creating/importing                                                                           |
+| `-store-dir`               | `.reconx`                     | Workspace directory for project inventory                                                                              |
+| `-api-token`               | `RECONX_API_TOKEN`            | API bearer token spec: `token:role[:project1                                                                           | project2 | \*]` |
+| `-api-listen`              | `127.0.0.1:8090`              | API listen address                                                                                                     |
+| `-profile`                 | `standard`                    | Scan profile: `safe`, `standard`, `active`, `proof`, `ci`, `full`                                                      |
+| `-active`                  |                               | Shortcut for `-profile active`                                                                                         |
+| `-proof`                   |                               | Shortcut for `-profile proof`                                                                                          |
+| `-ci`                      |                               | Shortcut for `-profile ci -no-tui`                                                                                     |
+| `-output`                  | `report.html`                 | HTML output path                                                                                                       |
+| `-json`                    |                               | JSON output path                                                                                                       |
+| `-sarif`                   |                               | SARIF 2.1.0 output path                                                                                                |
+| `-markdown`                |                               | Markdown report output path                                                                                            |
+| `-diff`                    |                               | Compare with previous JSON scan file                                                                                   |
+| `-baseline`                |                               | Previous recon-x JSON report used to suppress known findings                                                           |
+| `-allowlist`               | `.reconxignore`               | Allowlist file for suppressing findings                                                                                |
+| `-fail-on`                 | `high` in `ci`, otherwise off | Exit with code 1 for findings at or above severity: `critical`, `high`, `medium`, `low`, `info`, `none`                |
+| `-scanners`                | target-driven                 | Comma-separated scanner groups; domain: `dns,http,tls,cve,secrets,cloud,osint,web`; repo: `secrets,deps,config,routes` |
+| `-modules`                 | profile-driven                | Comma-separated module names; overrides `-profile`                                                                     |
+| `-ports`                   | 17 common                     | Custom port list                                                                                                       |
+| `-threads`                 | `50`                          | Concurrency                                                                                                            |
+| `-rate`                    | `50`                          | Max requests/sec                                                                                                       |
+| `-retries`                 | `2`                           | HTTP retries                                                                                                           |
+| `-no-tui`                  |                               | Disable interactive UI for CI/log files                                                                                |
+| `-redact`                  | `100`                         | Secret redaction percentage for outputs                                                                                |
+| `-show-secrets`            |                               | Show raw secrets/default credentials in outputs; unsafe, opt-in only                                                   |
+| `-resolver`                | system DNS                    | Custom DNS resolver (`1.1.1.1:53`)                                                                                     |
+| `-proxy`                   |                               | HTTP/HTTPS proxy (Burp, ZAP)                                                                                           |
+| `-github-token`            |                               | GitHub token for dorking                                                                                               |
+| `-shodan-key`              |                               | Shodan API key for passive recon                                                                                       |
+| `-cve-live`                |                               | Enrich detected CPEs from live NVD, CISA KEV and FIRST EPSS feeds                                                      |
+| `-nvd-api-key`             |                               | NVD API key for higher CVE enrichment rate limits                                                                      |
+| `-cve-timeout`             | `45`                          | Timeout in seconds for live CVE enrichment                                                                             |
+| `-nmap-xml`                |                               | Import Nmap XML (`-oX`) service/version/CPE results                                                                    |
+| `-skip-portscan`           |                               | Skip built-in TCP scan, useful when importing Nmap XML                                                                 |
+| `-cve-profile`             | `balanced`                    | CVE precision profile: `balanced`, `strict`, `broad`, `kev`                                                            |
+| `-cve-min-confidence`      |                               | Minimum CVE confidence: `low`, `medium`, `high`, `confirmed`                                                           |
+| `-cve-require-version`     |                               | Report CVEs only when product version evidence exists                                                                  |
+| `-cve-only-kev`            |                               | Report only CISA KEV known-exploited CVEs                                                                              |
+| `-cve-min-cvss`            | `0`                           | Minimum CVSS for CVE reporting                                                                                         |
+| `-cve-evidence`            |                               | Ground-truth JSON file for CVE accuracy proof mode                                                                     |
+| `-cve-evidence-scan`       |                               | Recon-x JSON report to compare with `-cve-evidence`                                                                    |
+| `-cve-evidence-report`     | `cve-evidence.json`           | Machine-readable evidence report                                                                                       |
+| `-cve-evidence-markdown`   |                               | Human-readable evidence report                                                                                         |
+| `-cve-evidence-threshold`  | `0.90`                        | Minimum precision and recall required for PASS                                                                         |
+| `-cve-assurance`           |                               | Recon-x JSON report to evaluate 90% CVE claim readiness for an authorized domain                                       |
+| `-cve-assurance-report`    | `cve-assurance.json`          | Machine-readable assurance report                                                                                      |
+| `-cve-assurance-markdown`  |                               | Human-readable assurance report                                                                                        |
+| `-cve-assurance-threshold` | `0.90`                        | Minimum evidence coverage required for public-service CVE assurance                                                    |
+| `-scope-file`              |                               | In-scope entries, one per line                                                                                         |
+| `-config`                  |                               | YAML config file                                                                                                       |
+| `-resume`                  |                               | Continue from last completed step                                                                                      |
+| `-notify-slack`            |                               | Slack webhook for critical alerts                                                                                      |
+| `-notify-telegram`         |                               | `TOKEN@CHATID` for Telegram alerts                                                                                     |
+| `-wordlist`                | embedded                      | Subdomain wordlist                                                                                                     |
+| `-dir-wordlist`            | embedded                      | Directory brute-force wordlist                                                                                         |
+| `-output-dir`              |                               | Directory for all output files                                                                                         |
+| `-silent`                  |                               | Suppress non-critical output                                                                                           |
+| `-verbose`                 |                               | Verbose output                                                                                                         |
+| `-version`                 |                               | Print version                                                                                                          |
 
 ---
 
 ## Modules
 
-| # | Name | Description |
-|---|------|-------------|
-| 1 | passive | crt.sh, CertSpotter, HackerTarget, AlienVault, URLScan |
-| 2 | subdomain | DNS brute-force + wildcard DNS detection |
-| 3 | port | TCP scan + banner grab |
-| 4 | http | HTTP fingerprint, tech stack, WAF, CVE match |
-| 5 | dir | Directory brute-force |
-| 6 | js | JS scraping — endpoints and secrets |
-| 7 | github | GitHub code search dorking |
-| 8 | buckets | S3 / GCS / Azure Blob exposure check |
-| 9 | tls | Cert expiry, weak ciphers, SAN mismatch |
-| 10 | redirect | Open redirect (22 params × 2 payloads) |
-| 11 | axfr | DNS zone transfer |
-| 12 | whois | WHOIS lookup |
-| 13 | screenshot | Headless screenshot, embedded in report |
-| 14 | takeover | Subdomain takeover via dangling CNAME |
-| 15 | cors | CORS misconfiguration |
-| 16 | bypass | 403 bypass — path tricks + header injection |
-| 17 | vhost | Virtual host discovery |
-| 18 | favicon | MurmurHash3 fingerprint (Shodan-style) |
-| 19 | asn | ASN / BGP prefix lookup |
-| 20 | graphql | GraphQL probe + introspection |
-| 21 | email | SPF / DMARC / DKIM, spoofability |
-| 22 | admin | Admin panel discovery (50+ paths) |
-| 23 | sqli | SQLi — error-based + time-based + boolean-blind + POST/JSON |
-| 24 | creds | Default credentials check |
-| 25 | ratelimit | Rate-limit header detection |
-| 26 | templates | 54 built-in YAML templates + custom |
-| 27 | xss | Reflected XSS — URL params + headers, context detection |
-| 28 | ssrf | SSRF — AWS metadata, loopback injection in URL params |
-| 29 | lfi | Path Traversal / LFI — Linux & Windows file signatures |
-| 30 | hostheader | Host Header Injection — 6 header variants, canary reflection |
-| 31 | jwt | JWT analysis — alg:none, missing exp, sensitive claims |
-| 32 | wayback | Wayback Machine — historical endpoints via CDX API |
-| 33 | shodan | Shodan passive recon — open ports, banners, vulns (API key required) |
-| 34 | xxe | XXE — XML external entity injection via POST endpoints |
-| 35 | cmdi | Command Injection — error-based, time-based, output-based |
+| #   | Name       | Description                                                          |
+| --- | ---------- | -------------------------------------------------------------------- |
+| 1   | passive    | crt.sh, CertSpotter, HackerTarget, AlienVault, URLScan               |
+| 2   | subdomain  | DNS brute-force + wildcard DNS detection                             |
+| 3   | port       | TCP scan + banner grab                                               |
+| 4   | http       | HTTP fingerprint, tech stack, WAF, CVE match                         |
+| 5   | dir        | Directory brute-force                                                |
+| 6   | js         | JS scraping — endpoints and secrets                                  |
+| 7   | github     | GitHub code search dorking                                           |
+| 8   | buckets    | S3 / GCS / Azure Blob exposure check                                 |
+| 9   | tls        | Cert expiry, weak ciphers, SAN mismatch                              |
+| 10  | redirect   | Open redirect (22 params × 2 payloads)                               |
+| 11  | axfr       | DNS zone transfer                                                    |
+| 12  | whois      | WHOIS lookup                                                         |
+| 13  | screenshot | Headless screenshot, embedded in report                              |
+| 14  | takeover   | Subdomain takeover via dangling CNAME                                |
+| 15  | cors       | CORS misconfiguration                                                |
+| 16  | bypass     | 403 bypass — path tricks + header injection                          |
+| 17  | vhost      | Virtual host discovery                                               |
+| 18  | favicon    | MurmurHash3 fingerprint (Shodan-style)                               |
+| 19  | asn        | ASN / BGP prefix lookup                                              |
+| 20  | graphql    | GraphQL probe + introspection                                        |
+| 21  | email      | SPF / DMARC / DKIM, spoofability                                     |
+| 22  | admin      | Admin panel discovery (50+ paths)                                    |
+| 23  | sqli       | SQLi — error-based + time-based + boolean-blind + POST/JSON          |
+| 24  | creds      | Default credentials check                                            |
+| 25  | ratelimit  | Rate-limit header detection                                          |
+| 26  | templates  | 54 built-in YAML templates + custom                                  |
+| 27  | xss        | Reflected XSS — URL params + headers, context detection              |
+| 28  | ssrf       | SSRF — AWS metadata, loopback injection in URL params                |
+| 29  | lfi        | Path Traversal / LFI — Linux & Windows file signatures               |
+| 30  | hostheader | Host Header Injection — 6 header variants, canary reflection         |
+| 31  | jwt        | JWT analysis — alg:none, missing exp, sensitive claims               |
+| 32  | wayback    | Wayback Machine — historical endpoints via CDX API                   |
+| 33  | shodan     | Shodan passive recon — open ports, banners, vulns (API key required) |
+| 34  | xxe        | XXE — XML external entity injection via POST endpoints               |
+| 35  | cmdi       | Command Injection — error-based, time-based, output-based            |
 
 ---
 

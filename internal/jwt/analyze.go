@@ -69,10 +69,8 @@ func ExtractTokens(body string) []string {
 }
 
 func DecodeSegment(seg string) (map[string]interface{}, error) {
-	// Try RawURLEncoding first (no padding)
 	data, err := base64.RawURLEncoding.DecodeString(seg)
 	if err != nil {
-		// Add padding and try standard URL encoding
 		switch len(seg) % 4 {
 		case 2:
 			seg += "=="

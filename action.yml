@@ -9,11 +9,11 @@ inputs:
     required: false
     default: "."
   mode:
-    description: Scan mode: domain or repo.
+    description: "Scan mode: domain or repo."
     required: false
     default: "repo"
   profile:
-    description: Scan profile.
+    description: "Scan profile."
     required: false
     default: "ci"
   scanners:

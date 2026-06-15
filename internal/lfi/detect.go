@@ -17,7 +17,7 @@ type Result struct {
 	Param    string
 	Payload  string
 	Evidence string
-	OS       string // "linux", "windows", "unknown"
+	OS       string
 	Detected bool
 }
 

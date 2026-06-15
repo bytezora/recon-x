@@ -13,29 +13,29 @@ Implemented local building blocks:
 
 ## Core entities
 
-| Entity | Purpose |
-|--------|---------|
-| Organization | Tenant boundary for billing, limits and audit policy |
-| User | Human or service account identity |
-| Project | Permission boundary that maps to `recon-x project <id>` |
-| Membership | User-to-organization or user-to-project role binding |
-| Role | Named permission set such as owner, admin, analyst, viewer |
-| Scan | Job/run created from `scan domain` or `scan repo` |
-| Artifact | Immutable `scan.json`, SARIF, Markdown or HTML report |
-| Finding | Fingerprinted triage item from a scan |
-| BaselineRule | Suppression rule from `.reconxignore` or UI policy |
-| AuditEvent | Append-only security and admin activity log |
-| Quota | Limit for scans, targets, concurrency and retention |
+| Entity       | Purpose                                                    |
+| ------------ | ---------------------------------------------------------- |
+| Organization | Tenant boundary for billing, limits and audit policy       |
+| User         | Human or service account identity                          |
+| Project      | Permission boundary that maps to `recon-x project <id>`    |
+| Membership   | User-to-organization or user-to-project role binding       |
+| Role         | Named permission set such as owner, admin, analyst, viewer |
+| Scan         | Job/run created from `scan domain` or `scan repo`          |
+| Artifact     | Immutable `scan.json`, SARIF, Markdown or HTML report      |
+| Finding      | Fingerprinted triage item from a scan                      |
+| BaselineRule | Suppression rule from `.reconxignore` or UI policy         |
+| AuditEvent   | Append-only security and admin activity log                |
+| Quota        | Limit for scans, targets, concurrency and retention        |
 
 ## Recommended roles
 
-| Role | Permissions |
-|------|-------------|
-| Owner | Manage billing, users, projects, policies and all scans |
-| Admin | Manage projects, run scans, triage findings and edit baselines |
-| Analyst | Run scans, view artifacts, triage findings |
-| Viewer | Read projects, scans and reports |
-| CI Bot | Create scans and upload artifacts for assigned projects |
+| Role    | Permissions                                                    |
+| ------- | -------------------------------------------------------------- |
+| Owner   | Manage billing, users, projects, policies and all scans        |
+| Admin   | Manage projects, run scans, triage findings and edit baselines |
+| Analyst | Run scans, view artifacts, triage findings                     |
+| Viewer  | Read projects, scans and reports                               |
+| CI Bot  | Create scans and upload artifacts for assigned projects        |
 
 These roles are implemented in `internal/rbac`.
 

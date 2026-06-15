@@ -34,7 +34,7 @@ func sendSlack(webhook, title, body string) {
 	}
 	b, _ := json.Marshal(payload)
 	client := &http.Client{Timeout: 10 * time.Second}
-	client.Post(webhook, "application/json", bytes.NewReader(b)) //nolint:errcheck
+	client.Post(webhook, "application/json", bytes.NewReader(b))
 }
 
 func sendTelegram(token, chatID, title, body string) {
@@ -47,7 +47,7 @@ func sendTelegram(token, chatID, title, body string) {
 	}
 	b, _ := json.Marshal(payload)
 	client := &http.Client{Timeout: 10 * time.Second}
-	client.Post(apiURL, "application/json", bytes.NewReader(b)) //nolint:errcheck
+	client.Post(apiURL, "application/json", bytes.NewReader(b))
 }
 
 func escapeMarkdown(s string) string {
